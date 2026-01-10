@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import { createServer } from "http";
 import cors from "cors";
 import { eq } from "drizzle-orm";
-import { setupPtyWebSocket, tmuxAvailable } from "./pty.js";
+import { setupPtyWebSocket, tmuxAvailable, killTmuxSession } from "./pty.js";
 import { db } from "./db/index.js";
 import { settings, tickets } from "./db/schema.js";
 
@@ -57,6 +57,7 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
 app.delete("/api/tickets/:id", async (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
   await db.delete(tickets).where(eq(tickets.id, id));
+  killTmuxSession(id);
   res.json({ success: true });
 });
 

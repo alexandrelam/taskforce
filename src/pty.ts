@@ -32,9 +32,20 @@ function getValidCwd(requestedCwd: string | null): string {
 }
 
 // Sanitize session ID to be safe for tmux session names
-function sanitizeSessionId(sessionId: string): string {
+export function sanitizeSessionId(sessionId: string): string {
   // tmux session names can't contain periods or colons
   return sessionId.replace(/[.:]/g, "-");
+}
+
+// Kill a tmux session by ticket ID
+export function killTmuxSession(ticketId: string): void {
+  if (!tmuxAvailable) return;
+  const sessionName = sanitizeSessionId(ticketId);
+  try {
+    execSync(`tmux kill-session -t ${sessionName}`, { stdio: "ignore" });
+  } catch {
+    // Session doesn't exist or already killed - ignore
+  }
 }
 
 export function setupPtyWebSocket(server: Server): void {
