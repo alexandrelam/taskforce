@@ -8,14 +8,16 @@ const WS_BASE = "ws://localhost:3000";
 
 export interface TerminalHandle {
   close: () => void;
+  kill: () => void;
 }
 
 interface TerminalProps {
+  sessionId: string;
   visible?: boolean;
 }
 
 export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Terminal(
-  { visible = true },
+  { sessionId, visible = true },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -27,6 +29,15 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
 
   useImperativeHandle(ref, () => ({
     close: () => {
+      wsRef.current?.close();
+      terminalRef.current?.dispose();
+      wsRef.current = null;
+      terminalRef.current = null;
+    },
+    kill: () => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "kill" }));
+      }
       wsRef.current?.close();
       terminalRef.current?.dispose();
       wsRef.current = null;
@@ -64,9 +75,12 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     terminalRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    const wsUrl = projectPath
-      ? `${WS_BASE}/pty?cwd=${encodeURIComponent(projectPath)}`
-      : `${WS_BASE}/pty`;
+    const params = new URLSearchParams();
+    params.set("sessionId", sessionId);
+    if (projectPath) {
+      params.set("cwd", projectPath);
+    }
+    const wsUrl = `${WS_BASE}/pty?${params.toString()}`;
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -109,7 +123,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       ws.close();
       term.dispose();
     };
-  }, [loading, projectPath]);
+  }, [loading, projectPath, sessionId]);
 
   // Refit terminal when visibility changes
   useEffect(() => {

@@ -26,6 +26,8 @@ import {
 } from "@dnd-kit/core";
 
 const API_BASE = "http://localhost:3000";
+const STORAGE_KEY_ACTIVE_TASKS = "terminal_active_task_ids";
+const STORAGE_KEY_SELECTED_TASK = "terminal_selected_task_id";
 
 interface Task {
   id: string;
@@ -36,6 +38,19 @@ type Columns = Record<UniqueIdentifier, Task[]>;
 
 const COLUMN_ORDER = ["To Do", "In Progress", "Done"];
 
+function getStoredActiveTaskIds(): string[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_ACTIVE_TASKS);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+function getStoredSelectedTaskId(): string | null {
+  return localStorage.getItem(STORAGE_KEY_SELECTED_TASK);
+}
+
 export function TaskBoard() {
   const [columns, setColumns] = useState<Columns>({
     "To Do": [],
@@ -43,7 +58,7 @@ export function TaskBoard() {
     Done: [],
   });
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [activeTaskIds, setActiveTaskIds] = useState<string[]>([]);
+  const [activeTaskIds, setActiveTaskIds] = useState<string[]>(getStoredActiveTaskIds);
   const [newTicketTitle, setNewTicketTitle] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const terminalManagerRef = useRef<TerminalManagerHandle>(null);
@@ -55,7 +70,7 @@ export function TaskBoard() {
     useSensor(TouchSensor, { activationConstraint: { distance: 8 } })
   );
 
-  // Fetch tickets on mount
+  // Fetch tickets on mount and restore selected task from localStorage
   useEffect(() => {
     fetch(`${API_BASE}/api/tickets`)
       .then((res) => res.json())
@@ -72,9 +87,32 @@ export function TaskBoard() {
           }
         });
         setColumns(newColumns);
+
+        // Restore selected task from localStorage if it exists
+        const storedSelectedId = getStoredSelectedTaskId();
+        if (storedSelectedId) {
+          const task = tickets.find((t) => t.id === storedSelectedId);
+          if (task) {
+            setSelectedTask({ id: task.id, title: task.title });
+          }
+        }
       })
       .catch(console.error);
   }, []);
+
+  // Persist activeTaskIds to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_ACTIVE_TASKS, JSON.stringify(activeTaskIds));
+  }, [activeTaskIds]);
+
+  // Persist selected task ID to localStorage
+  useEffect(() => {
+    if (selectedTask) {
+      localStorage.setItem(STORAGE_KEY_SELECTED_TASK, selectedTask.id);
+    } else {
+      localStorage.removeItem(STORAGE_KEY_SELECTED_TASK);
+    }
+  }, [selectedTask]);
 
   const handleCardClick = (task: Task) => {
     setSelectedTask(task);
@@ -83,10 +121,12 @@ export function TaskBoard() {
   };
 
   const handleClosePanel = useCallback(() => {
-    // Close all terminal sessions when panel is closed
-    terminalManagerRef.current?.closeAll();
+    // Kill all terminal sessions when panel is explicitly closed
+    terminalManagerRef.current?.killAll();
     setActiveTaskIds([]);
     setSelectedTask(null);
+    localStorage.removeItem(STORAGE_KEY_ACTIVE_TASKS);
+    localStorage.removeItem(STORAGE_KEY_SELECTED_TASK);
   }, []);
 
   const handleCreateTicket = async (e: React.FormEvent) => {
@@ -115,6 +155,11 @@ export function TaskBoard() {
     e.stopPropagation();
     try {
       await fetch(`${API_BASE}/api/tickets/${taskId}`, { method: "DELETE" });
+
+      // Kill terminal session for this ticket if it exists
+      terminalManagerRef.current?.killOne(taskId);
+      setActiveTaskIds((prev) => prev.filter((id) => id !== taskId));
+
       setColumns((prev) => {
         const newColumns: Columns = {};
         for (const [colId, tasks] of Object.entries(prev)) {
@@ -122,9 +167,10 @@ export function TaskBoard() {
         }
         return newColumns;
       });
-      // If deleted task was selected, close the panel
+
+      // If deleted task was selected, clear selection
       if (selectedTask?.id === taskId) {
-        handleClosePanel();
+        setSelectedTask(null);
       }
     } catch (error) {
       console.error("Failed to delete ticket:", error);

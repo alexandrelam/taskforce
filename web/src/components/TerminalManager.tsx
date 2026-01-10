@@ -3,6 +3,8 @@ import { Terminal, type TerminalHandle } from "./Terminal";
 
 export interface TerminalManagerHandle {
   closeAll: () => void;
+  killAll: () => void;
+  killOne: (taskId: string) => void;
 }
 
 interface TerminalManagerProps {
@@ -21,8 +23,25 @@ export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManager
       terminalRefs.current.clear();
     }, []);
 
+    const killAll = useCallback(() => {
+      terminalRefs.current.forEach((handle) => {
+        handle.kill();
+      });
+      terminalRefs.current.clear();
+    }, []);
+
+    const killOne = useCallback((taskId: string) => {
+      const handle = terminalRefs.current.get(taskId);
+      if (handle) {
+        handle.kill();
+        terminalRefs.current.delete(taskId);
+      }
+    }, []);
+
     useImperativeHandle(ref, () => ({
       closeAll,
+      killAll,
+      killOne,
     }));
 
     // Cleanup on page unload
@@ -58,6 +77,7 @@ export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManager
                 terminalRefs.current.set(taskId, handle);
               }
             }}
+            sessionId={taskId}
             visible={taskId === currentTaskId}
           />
         ))}
