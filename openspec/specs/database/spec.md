@@ -40,3 +40,14 @@ The system SHALL define database schemas in `src/db/schema.ts` using Drizzle ORM
 - **WHEN** a developer wants to add a new table
 - **THEN** they define it in `src/db/schema.ts` using `sqliteTable`
 - **AND** run `npm run db:push` to apply changes
+
+### Requirement: Settings Table
+
+The system SHALL define a settings table in `src/db/schema.ts` for storing application configuration.
+
+#### Scenario: Settings table definition
+
+- **WHEN** a developer inspects the database schema
+- **THEN** the `settings` table is defined with:
+  - `key` (text, primary key)
+  - `value` (text, not null)
