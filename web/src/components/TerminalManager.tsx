@@ -59,6 +59,7 @@ export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManager
               }
             }}
             visible={taskId === currentTaskId}
+            sessionId={taskId}
           />
         ))}
       </>

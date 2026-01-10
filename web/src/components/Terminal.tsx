@@ -12,10 +12,11 @@ export interface TerminalHandle {
 
 interface TerminalProps {
   visible?: boolean;
+  sessionId?: string;
 }
 
 export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Terminal(
-  { visible = true },
+  { visible = true, sessionId },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -64,9 +65,15 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     terminalRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    const wsUrl = projectPath
-      ? `${WS_BASE}/pty?cwd=${encodeURIComponent(projectPath)}`
-      : `${WS_BASE}/pty`;
+    const params = new URLSearchParams();
+    if (projectPath) {
+      params.set("cwd", projectPath);
+    }
+    if (sessionId) {
+      params.set("sessionId", sessionId);
+    }
+    const queryString = params.toString();
+    const wsUrl = queryString ? `${WS_BASE}/pty?${queryString}` : `${WS_BASE}/pty`;
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;

@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import { createServer } from "http";
 import cors from "cors";
 import { eq } from "drizzle-orm";
-import { setupPtyWebSocket } from "./pty.js";
+import { setupPtyWebSocket, tmuxAvailable } from "./pty.js";
 import { db } from "./db/index.js";
 import { settings, tickets } from "./db/schema.js";
 
@@ -18,6 +18,10 @@ app.get("/", (req: Request, res: Response) => {
 
 app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok" });
+});
+
+app.get("/api/tmux/status", (_req: Request, res: Response) => {
+  res.json({ available: tmuxAvailable });
 });
 
 app.get("/api/settings/:key", async (req: Request<{ key: string }>, res: Response) => {
