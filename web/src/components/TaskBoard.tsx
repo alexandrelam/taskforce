@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   Kanban,
   KanbanBoard,
@@ -6,7 +6,7 @@ import {
   KanbanItem,
   KanbanOverlay,
 } from "@/components/ui/kanban";
-import { Terminal } from "./Terminal";
+import { TerminalManager, type TerminalManagerHandle } from "./TerminalManager";
 import { SettingsDialog } from "./SettingsDialog";
 import {
   type UniqueIdentifier,
@@ -35,6 +35,8 @@ const initialColumns: Columns = {
 export function TaskBoard() {
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [activeTaskIds, setActiveTaskIds] = useState<string[]>([]);
+  const terminalManagerRef = useRef<TerminalManagerHandle>(null);
 
   // Require 8px movement before drag starts - allows clicks to work
   const sensors = useSensors(
@@ -44,7 +46,16 @@ export function TaskBoard() {
 
   const handleCardClick = (task: Task) => {
     setSelectedTask(task);
+    // Add to active terminals if not already present
+    setActiveTaskIds((prev) => (prev.includes(task.id) ? prev : [...prev, task.id]));
   };
+
+  const handleClosePanel = useCallback(() => {
+    // Close all terminal sessions when panel is closed
+    terminalManagerRef.current?.closeAll();
+    setActiveTaskIds([]);
+    setSelectedTask(null);
+  }, []);
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -112,7 +123,7 @@ export function TaskBoard() {
               <div className="font-medium">{selectedTask.title}</div>
             </div>
             <button
-              onClick={() => setSelectedTask(null)}
+              onClick={handleClosePanel}
               className="text-muted-foreground hover:text-foreground p-1"
             >
               <svg
@@ -132,7 +143,11 @@ export function TaskBoard() {
             </button>
           </div>
           <div className="flex-1 p-4">
-            <Terminal key={selectedTask.id} />
+            <TerminalManager
+              ref={terminalManagerRef}
+              activeTaskIds={activeTaskIds}
+              currentTaskId={selectedTask.id}
+            />
           </div>
         </div>
       )}

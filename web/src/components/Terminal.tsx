@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
@@ -6,12 +6,33 @@ import "@xterm/xterm/css/xterm.css";
 const API_BASE = "http://localhost:3000";
 const WS_BASE = "ws://localhost:3000";
 
-export function Terminal() {
+export interface TerminalHandle {
+  close: () => void;
+}
+
+interface TerminalProps {
+  visible?: boolean;
+}
+
+export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Terminal(
+  { visible = true },
+  ref
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<XTerm | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const [projectPath, setProjectPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useImperativeHandle(ref, () => ({
+    close: () => {
+      wsRef.current?.close();
+      terminalRef.current?.dispose();
+      wsRef.current = null;
+      terminalRef.current = null;
+    },
+  }));
 
   useEffect(() => {
     fetch(`${API_BASE}/api/settings/project_path`)
@@ -41,6 +62,7 @@ export function Terminal() {
     fitAddon.fit();
 
     terminalRef.current = term;
+    fitAddonRef.current = fitAddon;
 
     const wsUrl = projectPath
       ? `${WS_BASE}/pty?cwd=${encodeURIComponent(projectPath)}`
@@ -89,9 +111,23 @@ export function Terminal() {
     };
   }, [loading, projectPath]);
 
+  // Refit terminal when visibility changes
+  useEffect(() => {
+    if (visible && fitAddonRef.current) {
+      // Small delay to ensure container is visible before fitting
+      const timeout = setTimeout(() => {
+        fitAddonRef.current?.fit();
+      }, 10);
+      return () => clearTimeout(timeout);
+    }
+  }, [visible]);
+
   if (loading) {
     return (
-      <div className="h-full w-full min-h-[300px] bg-[#1a1a1a] rounded-md flex items-center justify-center text-white">
+      <div
+        className="h-full w-full min-h-[300px] bg-[#1a1a1a] rounded-md flex items-center justify-center text-white"
+        style={{ display: visible ? "flex" : "none" }}
+      >
         Loading...
       </div>
     );
@@ -101,6 +137,7 @@ export function Terminal() {
     <div
       ref={containerRef}
       className="h-full w-full min-h-[300px] bg-[#1a1a1a] rounded-md overflow-hidden"
+      style={{ display: visible ? "block" : "none" }}
     />
   );
-}
+});
