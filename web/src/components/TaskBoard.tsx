@@ -7,7 +7,13 @@ import {
   KanbanOverlay,
 } from "@/components/ui/kanban";
 import { Terminal } from "./Terminal";
-import type { UniqueIdentifier } from "@dnd-kit/core";
+import {
+  type UniqueIdentifier,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 
 interface Task {
   id: string;
@@ -29,22 +35,31 @@ export function TaskBoard() {
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  const handleCardClick = (task: Task, e: React.MouseEvent) => {
-    // Prevent opening terminal when dragging
-    if ((e.target as HTMLElement).closest("[data-dragging]")) return;
+  // Require 8px movement before drag starts - allows clicks to work
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const handleCardClick = (task: Task) => {
     setSelectedTask(task);
   };
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-white">
+    <div className="flex h-screen bg-background text-foreground">
       {/* Kanban Board */}
       <div className="flex-1 p-6 overflow-auto">
         <h1 className="text-2xl font-bold mb-6">Task Board</h1>
-        <Kanban value={columns} onValueChange={setColumns} getItemValue={(item) => item.id}>
+        <Kanban
+          value={columns}
+          onValueChange={setColumns}
+          getItemValue={(item) => item.id}
+          sensors={sensors}
+        >
           <KanbanBoard>
             {Object.entries(columns).map(([columnId, tasks]) => (
               <KanbanColumn key={columnId} value={columnId} className="w-80 shrink-0">
-                <div className="font-semibold text-zinc-300 mb-2 px-1">
+                <div className="font-semibold text-muted-foreground mb-2 px-1">
                   {columnId}
                   <span className="ml-2 text-zinc-500 text-sm">{tasks.length}</span>
                 </div>
@@ -53,8 +68,8 @@ export function TaskBoard() {
                     key={task.id}
                     value={task.id}
                     asHandle
-                    onClick={(e) => handleCardClick(task, e)}
-                    className="p-3 bg-zinc-800 rounded-md border border-zinc-700 hover:border-zinc-500 transition-colors"
+                    onClick={() => handleCardClick(task)}
+                    className="p-3 bg-card rounded-md border border-border hover:border-primary/50 transition-colors"
                   >
                     <div className="text-sm">{task.title}</div>
                   </KanbanItem>
@@ -66,7 +81,7 @@ export function TaskBoard() {
             {({ value, variant }) => {
               if (variant === "column") {
                 return (
-                  <div className="w-80 p-3 bg-zinc-800 rounded-lg border border-zinc-600 opacity-90">
+                  <div className="w-80 p-3 bg-card rounded-lg border border-border opacity-90">
                     {value}
                   </div>
                 );
@@ -75,7 +90,7 @@ export function TaskBoard() {
                 .flat()
                 .find((t) => t.id === value);
               return (
-                <div className="p-3 bg-zinc-800 rounded-md border border-zinc-500 opacity-90">
+                <div className="p-3 bg-card rounded-md border border-border opacity-90">
                   {task?.title}
                 </div>
               );
@@ -86,15 +101,15 @@ export function TaskBoard() {
 
       {/* Terminal Panel */}
       {selectedTask && (
-        <div className="w-[600px] border-l border-zinc-800 flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+        <div className="w-[600px] border-l border-border flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-border">
             <div>
-              <div className="text-sm text-zinc-400">Terminal</div>
+              <div className="text-sm text-muted-foreground">Terminal</div>
               <div className="font-medium">{selectedTask.title}</div>
             </div>
             <button
               onClick={() => setSelectedTask(null)}
-              className="text-zinc-400 hover:text-white p-1"
+              className="text-muted-foreground hover:text-foreground p-1"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
