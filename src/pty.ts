@@ -2,7 +2,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import type { Server } from "http";
 
-const shell = process.platform === "win32" ? "powershell.exe" : "bash";
+const shell = process.platform === "win32" ? "powershell.exe" : process.env.SHELL || "/bin/zsh";
 
 export function setupPtyWebSocket(server: Server): void {
   const wss = new WebSocketServer({ server, path: "/pty" });
