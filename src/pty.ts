@@ -1,18 +1,29 @@
 import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
-import type { Server } from "http";
+import type { Server, IncomingMessage } from "http";
+import { existsSync } from "fs";
 
 const shell = process.platform === "win32" ? "powershell.exe" : process.env.SHELL || "/bin/zsh";
+
+function getValidCwd(requestedCwd: string | null): string {
+  const fallback = process.env.HOME || process.cwd();
+  if (!requestedCwd) return fallback;
+  return existsSync(requestedCwd) ? requestedCwd : fallback;
+}
 
 export function setupPtyWebSocket(server: Server): void {
   const wss = new WebSocketServer({ server, path: "/pty" });
 
-  wss.on("connection", (ws: WebSocket) => {
+  wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
+    const url = new URL(req.url || "", `http://${req.headers.host}`);
+    const requestedCwd = url.searchParams.get("cwd");
+    const cwd = getValidCwd(requestedCwd);
+
     const ptyProcess = pty.spawn(shell, [], {
       name: "xterm-256color",
       cols: 80,
       rows: 24,
-      cwd: process.env.HOME || process.cwd(),
+      cwd,
       env: process.env as Record<string, string>,
     });
 

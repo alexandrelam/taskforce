@@ -7,6 +7,7 @@ import {
   KanbanOverlay,
 } from "@/components/ui/kanban";
 import { Terminal } from "./Terminal";
+import { SettingsDialog } from "./SettingsDialog";
 import {
   type UniqueIdentifier,
   MouseSensor,
@@ -49,7 +50,10 @@ export function TaskBoard() {
     <div className="flex h-screen bg-background text-foreground">
       {/* Kanban Board */}
       <div className="flex-1 p-6 overflow-auto">
-        <h1 className="text-2xl font-bold mb-6">Task Board</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Task Board</h1>
+          <SettingsDialog />
+        </div>
         <Kanban
           value={columns}
           onValueChange={setColumns}

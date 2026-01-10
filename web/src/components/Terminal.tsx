@@ -1,19 +1,28 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 
-interface TerminalProps {
-  wsUrl?: string;
-}
+const API_BASE = "http://localhost:3000";
+const WS_BASE = "ws://localhost:3000";
 
-export function Terminal({ wsUrl = "ws://localhost:3000/pty" }: TerminalProps) {
+export function Terminal() {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<XTerm | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const [projectPath, setProjectPath] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    fetch(`${API_BASE}/api/settings/project_path`)
+      .then((res) => res.json())
+      .then((data) => setProjectPath(data.value))
+      .catch(() => setProjectPath(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (loading || !containerRef.current) return;
 
     const term = new XTerm({
       cursorBlink: true,
@@ -32,6 +41,10 @@ export function Terminal({ wsUrl = "ws://localhost:3000/pty" }: TerminalProps) {
     fitAddon.fit();
 
     terminalRef.current = term;
+
+    const wsUrl = projectPath
+      ? `${WS_BASE}/pty?cwd=${encodeURIComponent(projectPath)}`
+      : `${WS_BASE}/pty`;
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -74,7 +87,15 @@ export function Terminal({ wsUrl = "ws://localhost:3000/pty" }: TerminalProps) {
       ws.close();
       term.dispose();
     };
-  }, [wsUrl]);
+  }, [loading, projectPath]);
+
+  if (loading) {
+    return (
+      <div className="h-full w-full min-h-[300px] bg-[#1a1a1a] rounded-md flex items-center justify-center text-white">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div
