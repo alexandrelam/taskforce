@@ -34,6 +34,13 @@ interface PostCommandResult {
  */
 export declare function runPostWorktreeCommand(cwd: string, command: string): PostCommandResult;
 /**
+ * Create a git worktree from an existing branch (local or remote)
+ * @param projectPath - The path to the project (main git repo)
+ * @param branchName - The name of the existing branch (e.g., "feature-x" or "origin/feature-x")
+ * @returns The worktree path or error
+ */
+export declare function createWorktreeFromBranch(projectPath: string, branchName: string): WorktreeResult;
+/**
  * Remove a git worktree
  * @param projectPath - The path to the main project (git repo)
  * @param worktreePath - The path to the worktree to remove

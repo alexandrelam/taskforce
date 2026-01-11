@@ -8,6 +8,7 @@ exports.getCurrentBranch = getCurrentBranch;
 exports.isGitRepo = isGitRepo;
 exports.createWorktree = createWorktree;
 exports.runPostWorktreeCommand = runPostWorktreeCommand;
+exports.createWorktreeFromBranch = createWorktreeFromBranch;
 exports.removeWorktree = removeWorktree;
 const child_process_1 = require("child_process");
 const path_1 = __importDefault(require("path"));
@@ -114,6 +115,47 @@ function runPostWorktreeCommand(cwd, command) {
     catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return { output: null, error: message };
+    }
+}
+/**
+ * Create a git worktree from an existing branch (local or remote)
+ * @param projectPath - The path to the project (main git repo)
+ * @param branchName - The name of the existing branch (e.g., "feature-x" or "origin/feature-x")
+ * @returns The worktree path or error
+ */
+function createWorktreeFromBranch(projectPath, branchName) {
+    if (!isGitRepo(projectPath)) {
+        return { worktreePath: null, error: "Project is not a git repository" };
+    }
+    const projectName = path_1.default.basename(projectPath);
+    const parentDir = path_1.default.dirname(projectPath);
+    // Sanitize branch name for directory: remove "origin/" prefix and slugify
+    const branchSlug = slugify(branchName.replace(/^origin\//, ""));
+    const worktreeName = `${projectName}-${branchSlug}`;
+    const worktreePath = path_1.default.join(parentDir, worktreeName);
+    try {
+        // Check if branch exists (local or remote)
+        (0, child_process_1.execSync)(`git rev-parse --verify "${branchName}"`, {
+            cwd: projectPath,
+            encoding: "utf-8",
+            stdio: ["pipe", "pipe", "pipe"],
+        });
+    }
+    catch {
+        return { worktreePath: null, error: `Branch '${branchName}' not found` };
+    }
+    try {
+        // Create worktree from existing branch (no -b flag)
+        (0, child_process_1.execSync)(`git worktree add "${worktreePath}" "${branchName}"`, {
+            cwd: projectPath,
+            encoding: "utf-8",
+            stdio: ["pipe", "pipe", "pipe"],
+        });
+        return { worktreePath, error: null };
+    }
+    catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { worktreePath: null, error: message };
     }
 }
 /**

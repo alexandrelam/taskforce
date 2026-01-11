@@ -88,6 +88,11 @@ export function TaskBoard() {
   const [newTicketDescription, setNewTicketDescription] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  // Open Branch dialog state
+  const [branchDialogOpen, setBranchDialogOpen] = useState(false);
+  const [branchName, setBranchName] = useState("");
+  const [branchDescription, setBranchDescription] = useState("");
+  const [isOpeningBranch, setIsOpeningBranch] = useState(false);
   const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
   const terminalManagerRef = useRef<TerminalManagerHandle>(null);
   const previousColumnsRef = useRef<Columns | null>(null);
@@ -277,6 +282,45 @@ export function TaskBoard() {
       console.error("Failed to create ticket:", error);
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleOpenBranch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!branchName.trim() || !selectedProject || isOpeningBranch) return;
+
+    setIsOpeningBranch(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/tickets/from-branch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          branchName: branchName.trim(),
+          projectId: selectedProject.id,
+          description: branchDescription.trim() || null,
+        }),
+      });
+      const ticket = await res.json();
+      setColumns((prev) => ({
+        ...prev,
+        "To Do": [
+          ...prev["To Do"],
+          {
+            id: ticket.id,
+            title: ticket.title,
+            worktreePath: ticket.worktreePath,
+            setupStatus: ticket.setupStatus,
+            description: ticket.description,
+          },
+        ],
+      }));
+      setBranchName("");
+      setBranchDescription("");
+      setBranchDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to open branch:", error);
+    } finally {
+      setIsOpeningBranch(false);
     }
   };
 
@@ -527,6 +571,43 @@ export function TaskBoard() {
                       </>
                     ) : (
                       "Create"
+                    )}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={branchDialogOpen} onOpenChange={setBranchDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={!selectedProject}>
+                  <GitBranch className="h-4 w-4 mr-1" />
+                  Open Branch
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Open Existing Branch</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleOpenBranch} className="space-y-4">
+                  <Input
+                    placeholder="Branch name (e.g., feature-x or origin/feature-x)"
+                    value={branchName}
+                    onChange={(e) => setBranchName(e.target.value)}
+                    autoFocus
+                  />
+                  <textarea
+                    placeholder="Description (optional)"
+                    value={branchDescription}
+                    onChange={(e) => setBranchDescription(e.target.value)}
+                    className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
+                  />
+                  <Button type="submit" className="w-full" disabled={isOpeningBranch}>
+                    {isOpeningBranch ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Opening...
+                      </>
+                    ) : (
+                      "Open Branch"
                     )}
                   </Button>
                 </form>
