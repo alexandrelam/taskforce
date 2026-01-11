@@ -45,6 +45,7 @@ interface Task {
   setupStatus?: SetupStatus;
   setupError?: string | null;
   setupLogs?: string | null;
+  description?: string | null;
 }
 
 interface Pane {
@@ -73,6 +74,7 @@ export function TaskBoard() {
   const [activeTaskIds, setActiveTaskIds] = useState<string[]>([]);
   const [currentPane, setCurrentPane] = useState<string>("claude");
   const [newTicketTitle, setNewTicketTitle] = useState("");
+  const [newTicketDescription, setNewTicketDescription] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const terminalManagerRef = useRef<TerminalManagerHandle>(null);
@@ -155,6 +157,7 @@ export function TaskBoard() {
               setupStatus?: SetupStatus;
               setupError?: string | null;
               setupLogs?: string | null;
+              description?: string | null;
             }[]
           ) => {
             const newColumns: Columns = {
@@ -173,6 +176,7 @@ export function TaskBoard() {
                   setupStatus: ticket.setupStatus,
                   setupError: ticket.setupError,
                   setupLogs: ticket.setupLogs,
+                  description: ticket.description,
                 });
               }
             });
@@ -232,7 +236,11 @@ export function TaskBoard() {
       const res = await fetch(`${API_BASE}/api/tickets`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTicketTitle.trim(), projectId: selectedProject.id }),
+        body: JSON.stringify({
+          title: newTicketTitle.trim(),
+          projectId: selectedProject.id,
+          description: newTicketDescription.trim() || null,
+        }),
       });
       const ticket = await res.json();
       setColumns((prev) => ({
@@ -244,10 +252,12 @@ export function TaskBoard() {
             title: ticket.title,
             worktreePath: ticket.worktreePath,
             setupStatus: ticket.setupStatus,
+            description: ticket.description,
           },
         ],
       }));
       setNewTicketTitle("");
+      setNewTicketDescription("");
       setDialogOpen(false);
     } catch (error) {
       console.error("Failed to create ticket:", error);
@@ -442,6 +452,12 @@ export function TaskBoard() {
                     onChange={(e) => setNewTicketTitle(e.target.value)}
                     autoFocus
                   />
+                  <textarea
+                    placeholder="Description (optional)"
+                    value={newTicketDescription}
+                    onChange={(e) => setNewTicketDescription(e.target.value)}
+                    className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
+                  />
                   <Button type="submit" className="w-full" disabled={isCreating}>
                     {isCreating ? (
                       <>
@@ -551,6 +567,11 @@ export function TaskBoard() {
                               </button>
                             )}
                           </div>
+                          {task.description && (
+                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              {task.description}
+                            </div>
+                          )}
                           {isSetupInProgress && (
                             <div className="text-xs text-muted-foreground mt-1">
                               {getStatusText()}
