@@ -1,12 +1,9 @@
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import { Terminal, type TerminalHandle } from "./Terminal";
+import type { Pane } from "@/types";
 
 export interface TerminalManagerHandle {
   closeAll: () => void;
-}
-
-interface Pane {
-  name: string;
 }
 
 interface TerminalManagerProps {

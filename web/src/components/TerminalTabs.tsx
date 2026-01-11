@@ -1,8 +1,5 @@
 import { cn } from "@/lib/utils";
-
-interface Pane {
-  name: string;
-}
+import type { Pane } from "@/types";
 
 interface TerminalTabsProps {
   panes: Pane[];
