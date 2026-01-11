@@ -10,12 +10,83 @@ import {
   createWorktreeFromBranch,
   removeWorktree,
   runPostWorktreeCommand,
+  isTmuxAvailable,
+  spawnTmuxCommand,
+  getTmuxSessionStatus,
+  captureTmuxOutput,
+  killSetupTmuxSession,
 } from "../worktree.js";
 
 const router = Router();
 
 // Type for worktree creation function
 type WorktreeCreator = () => { worktreePath: string | null; error: string | null };
+
+// Constants for setup monitoring
+const SETUP_POLL_INTERVAL = 2000; // 2 seconds
+const SETUP_MAX_DURATION = 600000; // 10 minutes
+
+/**
+ * Monitor a setup tmux session and update ticket status on completion
+ */
+function monitorSetupSession(ticketId: string, sessionName: string): void {
+  const startTime = Date.now();
+
+  const checkStatus = async () => {
+    // Check for timeout
+    if (Date.now() - startTime > SETUP_MAX_DURATION) {
+      const output = captureTmuxOutput(sessionName);
+      await db
+        .update(tickets)
+        .set({
+          setupStatus: "failed",
+          setupError: "Setup timed out after 10 minutes",
+          setupLogs: output,
+          setupTmuxSession: null,
+        })
+        .where(eq(tickets.id, ticketId));
+      killSetupTmuxSession(sessionName);
+      return;
+    }
+
+    const status = getTmuxSessionStatus(sessionName);
+
+    if (!status.running) {
+      // Session completed
+      const output = captureTmuxOutput(sessionName);
+
+      if (status.exitCode === 0) {
+        // Success - mark ready and clean up
+        await db
+          .update(tickets)
+          .set({
+            setupStatus: "ready",
+            setupLogs: output,
+            setupTmuxSession: null,
+          })
+          .where(eq(tickets.id, ticketId));
+        killSetupTmuxSession(sessionName);
+      } else {
+        // Failure - keep session for viewing, store output
+        await db
+          .update(tickets)
+          .set({
+            setupStatus: "failed",
+            setupError: `Command exited with code ${status.exitCode}`,
+            setupLogs: output,
+            // Keep setupTmuxSession so user can view it
+          })
+          .where(eq(tickets.id, ticketId));
+      }
+    } else {
+      // Still running - poll again
+      setTimeout(checkStatus, SETUP_POLL_INTERVAL);
+    }
+  };
+
+  // Start polling
+  setTimeout(checkStatus, SETUP_POLL_INTERVAL);
+}
 
 // Async function to run ticket setup (worktree creation + post-command) in background
 async function runTicketSetup(
@@ -52,33 +123,38 @@ async function runTicketSetup(
 
     // Run post-worktree command if configured
     if (result.worktreePath && postWorktreeCommand) {
-      await db
-        .update(tickets)
-        .set({ setupStatus: "running_post_command" })
-        .where(eq(tickets.id, ticketId));
+      const setupSessionName = `${ticketId}-setup`;
 
-      const cmdResult = runPostWorktreeCommand(result.worktreePath, postWorktreeCommand);
+      // Try to use tmux for deferred execution
+      if (isTmuxAvailable()) {
+        const spawnResult = spawnTmuxCommand(
+          setupSessionName,
+          result.worktreePath,
+          postWorktreeCommand
+        );
 
-      if (cmdResult.error) {
+        if (spawnResult.error) {
+          // Tmux spawn failed, fall back to sync execution
+          console.warn(`Tmux spawn failed, falling back to sync: ${spawnResult.error}`);
+          await runPostCommandSync(ticketId, result.worktreePath, postWorktreeCommand);
+          return;
+        }
+
+        // Update status and store session name
         await db
           .update(tickets)
           .set({
-            setupStatus: "failed",
-            setupError: cmdResult.error,
-            setupLogs: cmdResult.output,
+            setupStatus: "running_post_command",
+            setupTmuxSession: setupSessionName,
           })
           .where(eq(tickets.id, ticketId));
-        return;
-      }
 
-      // Store logs on success
-      await db
-        .update(tickets)
-        .set({
-          setupStatus: "ready",
-          setupLogs: cmdResult.output,
-        })
-        .where(eq(tickets.id, ticketId));
+        // Start background monitoring
+        monitorSetupSession(ticketId, setupSessionName);
+      } else {
+        // Tmux not available, use synchronous execution
+        await runPostCommandSync(ticketId, result.worktreePath, postWorktreeCommand);
+      }
     } else {
       // No post-command, mark as ready
       await db.update(tickets).set({ setupStatus: "ready" }).where(eq(tickets.id, ticketId));
@@ -93,6 +169,43 @@ async function runTicketSetup(
       })
       .where(eq(tickets.id, ticketId));
   }
+}
+
+/**
+ * Run post-worktree command synchronously (fallback when tmux unavailable)
+ */
+async function runPostCommandSync(
+  ticketId: string,
+  worktreePath: string,
+  command: string
+): Promise<void> {
+  await db
+    .update(tickets)
+    .set({ setupStatus: "running_post_command" })
+    .where(eq(tickets.id, ticketId));
+
+  const cmdResult = runPostWorktreeCommand(worktreePath, command);
+
+  if (cmdResult.error) {
+    await db
+      .update(tickets)
+      .set({
+        setupStatus: "failed",
+        setupError: cmdResult.error,
+        setupLogs: cmdResult.output,
+      })
+      .where(eq(tickets.id, ticketId));
+    return;
+  }
+
+  // Store logs on success
+  await db
+    .update(tickets)
+    .set({
+      setupStatus: "ready",
+      setupLogs: cmdResult.output,
+    })
+    .where(eq(tickets.id, ticketId));
 }
 
 router.get("/", async (req: Request, res: Response) => {
@@ -261,6 +374,11 @@ router.delete("/:id", async (req: Request<{ id: string }>, res: Response) => {
         console.warn(`Failed to remove worktree: ${result.error}`);
       }
     }
+  }
+
+  // Kill setup session if it exists
+  if (ticketData?.setupTmuxSession) {
+    killSetupTmuxSession(ticketData.setupTmuxSession);
   }
 
   await db.delete(tickets).where(eq(tickets.id, id));

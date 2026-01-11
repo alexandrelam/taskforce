@@ -49,5 +49,42 @@ export declare function removeWorktree(projectPath: string, worktreePath: string
     success: boolean;
     error: string | null;
 };
+/**
+ * Check if tmux is available
+ */
+export declare function isTmuxAvailable(): boolean;
+interface SpawnResult {
+    success: boolean;
+    error: string | null;
+}
+/**
+ * Spawn a tmux session to run a command in the background
+ * @param sessionName - Unique session name (e.g., "{ticketId}-setup")
+ * @param cwd - Working directory for the command
+ * @param command - Shell command to execute
+ * @returns Success status and any immediate errors
+ */
+export declare function spawnTmuxCommand(sessionName: string, cwd: string, command: string): SpawnResult;
+interface SessionStatus {
+    running: boolean;
+    exitCode: number | null;
+}
+/**
+ * Check if a tmux session is still running
+ * @param sessionName - The tmux session name to check
+ * @returns Whether the session is running and its exit code if finished
+ */
+export declare function getTmuxSessionStatus(sessionName: string): SessionStatus;
+/**
+ * Capture the output buffer from a tmux session
+ * @param sessionName - The tmux session name
+ * @returns The captured output text
+ */
+export declare function captureTmuxOutput(sessionName: string): string;
+/**
+ * Kill a setup tmux session and clean up
+ * @param sessionName - The tmux session name to kill
+ */
+export declare function killSetupTmuxSession(sessionName: string): void;
 export {};
 //# sourceMappingURL=worktree.d.ts.map

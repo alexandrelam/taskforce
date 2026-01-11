@@ -1,5 +1,8 @@
 import { execSync } from "child_process";
 import path from "path";
+import { existsSync, unlinkSync, readFileSync } from "fs";
+import os from "os";
+import { tmuxAvailable, sanitizeSessionId } from "./pty.js";
 
 /**
  * Convert a ticket title to a filesystem-safe slug
@@ -185,5 +188,162 @@ export function removeWorktree(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { success: false, error: message };
+  }
+}
+
+// --- Tmux Setup Session Functions ---
+
+/**
+ * Get the path to the exit code file for a tmux session
+ */
+function getExitCodePath(sessionName: string): string {
+  return path.join(os.tmpdir(), `tmux-exit-${sessionName}`);
+}
+
+/**
+ * Check if tmux is available
+ */
+export function isTmuxAvailable(): boolean {
+  return tmuxAvailable;
+}
+
+interface SpawnResult {
+  success: boolean;
+  error: string | null;
+}
+
+/**
+ * Spawn a tmux session to run a command in the background
+ * @param sessionName - Unique session name (e.g., "{ticketId}-setup")
+ * @param cwd - Working directory for the command
+ * @param command - Shell command to execute
+ * @returns Success status and any immediate errors
+ */
+export function spawnTmuxCommand(sessionName: string, cwd: string, command: string): SpawnResult {
+  if (!tmuxAvailable) {
+    return { success: false, error: "tmux is not available" };
+  }
+
+  const sanitizedName = sanitizeSessionId(sessionName);
+  const exitCodePath = getExitCodePath(sanitizedName);
+
+  // Clean up any existing exit code file
+  if (existsSync(exitCodePath)) {
+    try {
+      unlinkSync(exitCodePath);
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+
+  try {
+    // Wrap the command to capture exit code
+    // The command runs, then writes its exit code to a file
+    const wrappedCommand = `${command}; echo $? > "${exitCodePath}"`;
+
+    execSync(
+      `tmux new-session -d -s "${sanitizedName}" -c "${cwd}" "${wrappedCommand.replace(/"/g, '\\"')}"`,
+      {
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }
+    );
+
+    return { success: true, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message };
+  }
+}
+
+interface SessionStatus {
+  running: boolean;
+  exitCode: number | null;
+}
+
+/**
+ * Check if a tmux session is still running
+ * @param sessionName - The tmux session name to check
+ * @returns Whether the session is running and its exit code if finished
+ */
+export function getTmuxSessionStatus(sessionName: string): SessionStatus {
+  if (!tmuxAvailable) {
+    return { running: false, exitCode: null };
+  }
+
+  const sanitizedName = sanitizeSessionId(sessionName);
+
+  // Check if session exists
+  try {
+    execSync(`tmux has-session -t "${sanitizedName}"`, {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return { running: true, exitCode: null };
+  } catch {
+    // Session doesn't exist - check for exit code file
+    const exitCodePath = getExitCodePath(sanitizedName);
+    if (existsSync(exitCodePath)) {
+      try {
+        const exitCodeStr = readFileSync(exitCodePath, "utf-8").trim();
+        const exitCode = parseInt(exitCodeStr, 10);
+        return { running: false, exitCode: isNaN(exitCode) ? 1 : exitCode };
+      } catch {
+        return { running: false, exitCode: 1 };
+      }
+    }
+    return { running: false, exitCode: null };
+  }
+}
+
+/**
+ * Capture the output buffer from a tmux session
+ * @param sessionName - The tmux session name
+ * @returns The captured output text
+ */
+export function captureTmuxOutput(sessionName: string): string {
+  if (!tmuxAvailable) {
+    return "";
+  }
+
+  const sanitizedName = sanitizeSessionId(sessionName);
+
+  try {
+    // Capture the entire scrollback buffer
+    const output = execSync(`tmux capture-pane -t "${sanitizedName}" -p -S -`, {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+      maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+    });
+    return output;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Kill a setup tmux session and clean up
+ * @param sessionName - The tmux session name to kill
+ */
+export function killSetupTmuxSession(sessionName: string): void {
+  if (!tmuxAvailable) return;
+
+  const sanitizedName = sanitizeSessionId(sessionName);
+
+  // Kill the session
+  try {
+    execSync(`tmux kill-session -t "${sanitizedName}"`, { stdio: "ignore" });
+  } catch {
+    // Session may already be dead
+  }
+
+  // Clean up exit code file
+  const exitCodePath = getExitCodePath(sanitizedName);
+  if (existsSync(exitCodePath)) {
+    try {
+      unlinkSync(exitCodePath);
+    } catch {
+      // Ignore cleanup errors
+    }
   }
 }

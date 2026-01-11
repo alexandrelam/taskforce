@@ -29,6 +29,7 @@ export interface Task {
   setupStatus?: SetupStatus;
   setupError?: string | null;
   setupLogs?: string | null;
+  setupTmuxSession?: string | null;
   description?: string | null;
   statusOverride?: boolean | null;
 }
@@ -49,6 +50,7 @@ export interface TicketResponse {
   setupStatus?: SetupStatus;
   setupError?: string | null;
   setupLogs?: string | null;
+  setupTmuxSession?: string | null;
   description?: string | null;
   statusOverride?: boolean | null;
 }

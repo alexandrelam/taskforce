@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 import { TerminalManager, type TerminalManagerHandle } from "@/components/TerminalManager";
 import { TerminalTabs } from "@/components/TerminalTabs";
@@ -26,10 +27,29 @@ export function TerminalPanel({
 }: TerminalPanelProps) {
   const isTaskReady = !selectedTask.setupStatus || selectedTask.setupStatus === "ready";
   const isTaskFailed = selectedTask.setupStatus === "failed";
-  const isTaskInProgress =
+  const hasSetupSession = !!selectedTask.setupTmuxSession;
+  const isRunningPostCommand = selectedTask.setupStatus === "running_post_command";
+
+  // Show terminal when ready OR when we have a setup session to display
+  const showTerminal = isTaskReady || (hasSetupSession && (isRunningPostCommand || isTaskFailed));
+
+  // Show tabs when terminal is shown and project exists
+  const showTabs = showTerminal && selectedProject;
+
+  // In-progress states without a setup session (worktree creation)
+  const isTaskInProgressNoTerminal =
     selectedTask.setupStatus === "pending" ||
     selectedTask.setupStatus === "creating_worktree" ||
-    selectedTask.setupStatus === "running_post_command";
+    (selectedTask.setupStatus === "running_post_command" && !hasSetupSession);
+
+  // Build setupSessions map for TerminalManager
+  const setupSessions = useMemo(() => {
+    const map: Record<string, string | null | undefined> = {};
+    if (selectedTask.setupTmuxSession) {
+      map[selectedTask.id] = selectedTask.setupTmuxSession;
+    }
+    return map;
+  }, [selectedTask.id, selectedTask.setupTmuxSession]);
 
   const getPanelTitle = () => {
     if (isTaskReady) return "Terminal";
@@ -76,11 +96,17 @@ export function TerminalPanel({
           </svg>
         </button>
       </div>
-      {isTaskReady && selectedProject && panes.length > 0 && (
-        <TerminalTabs panes={panes} activePane={currentPane} onPaneChange={onPaneChange} />
+      {showTabs && (panes.length > 0 || hasSetupSession) && (
+        <TerminalTabs
+          panes={panes}
+          activePane={currentPane}
+          onPaneChange={onPaneChange}
+          setupSession={selectedTask.setupTmuxSession}
+          setupStatus={selectedTask.setupStatus}
+        />
       )}
       <div className="flex-1 p-4 overflow-auto">
-        {isTaskReady && (
+        {showTerminal && (
           <TerminalManager
             ref={terminalManagerRef}
             activeTaskIds={activeTaskIds}
@@ -89,9 +115,10 @@ export function TerminalPanel({
             panes={panes}
             defaultCwd={selectedProject?.path}
             taskCwdMap={taskCwdMap}
+            setupSessions={setupSessions}
           />
         )}
-        {isTaskInProgress && (
+        {isTaskInProgressNoTerminal && (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
             <p className="text-lg font-medium mb-2">{getProgressText()}</p>
@@ -108,7 +135,7 @@ export function TerminalPanel({
             )}
           </div>
         )}
-        {isTaskFailed && (
+        {isTaskFailed && !hasSetupSession && (
           <div className="flex flex-col h-full">
             <div className="flex items-center gap-2 text-destructive mb-4">
               <AlertCircle className="h-5 w-5" />

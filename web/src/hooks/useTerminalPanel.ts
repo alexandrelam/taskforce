@@ -15,7 +15,12 @@ export function useTerminalPanel() {
 
   const openTask = useCallback((task: Task, projectId: string) => {
     setSelectedTaskInfo({ task, projectId });
-    setCurrentPane("claude");
+    // Auto-switch to setup tab if setup is running with a tmux session
+    if (task.setupTmuxSession && task.setupStatus === "running_post_command") {
+      setCurrentPane("setup");
+    } else {
+      setCurrentPane("claude");
+    }
     setActiveTaskIds((prev) => (prev.includes(task.id) ? prev : [...prev, task.id]));
   }, []);
 
@@ -39,6 +44,7 @@ export function useTerminalPanel() {
         (updatedTask.setupStatus !== selectedTaskInfo.task.setupStatus ||
           updatedTask.setupError !== selectedTaskInfo.task.setupError ||
           updatedTask.setupLogs !== selectedTaskInfo.task.setupLogs ||
+          updatedTask.setupTmuxSession !== selectedTaskInfo.task.setupTmuxSession ||
           updatedTask.worktreePath !== selectedTaskInfo.task.worktreePath)
       ) {
         setSelectedTaskInfo({ ...selectedTaskInfo, task: updatedTask });

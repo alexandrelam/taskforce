@@ -41,6 +41,7 @@ export function useTickets(selectedProjectId: string | null) {
                 setupStatus: ticket.setupStatus,
                 setupError: ticket.setupError,
                 setupLogs: ticket.setupLogs,
+                setupTmuxSession: ticket.setupTmuxSession,
                 description: ticket.description,
                 statusOverride: ticket.statusOverride,
               });

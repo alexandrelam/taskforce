@@ -27,6 +27,7 @@ exports.tickets = (0, sqlite_core_1.sqliteTable)("tickets", {
     setupStatus: (0, sqlite_core_1.text)("setup_status").notNull().default("ready"),
     setupError: (0, sqlite_core_1.text)("setup_error"),
     setupLogs: (0, sqlite_core_1.text)("setup_logs"),
+    setupTmuxSession: (0, sqlite_core_1.text)("setup_tmux_session"),
     description: (0, sqlite_core_1.text)("description"),
     statusOverride: (0, sqlite_core_1.integer)("status_override", { mode: "boolean" }),
 });

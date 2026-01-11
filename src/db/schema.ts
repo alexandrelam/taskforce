@@ -27,6 +27,7 @@ export const tickets = sqliteTable("tickets", {
   setupStatus: text("setup_status").notNull().default("ready"),
   setupError: text("setup_error"),
   setupLogs: text("setup_logs"),
+  setupTmuxSession: text("setup_tmux_session"),
   description: text("description"),
   statusOverride: integer("status_override", { mode: "boolean" }),
 });

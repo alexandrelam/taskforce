@@ -13,6 +13,7 @@ interface TerminalManagerProps {
   panes: Pane[];
   defaultCwd?: string;
   taskCwdMap?: Record<string, string | null | undefined>;
+  setupSessions?: Record<string, string | null | undefined>;
 }
 
 // Generate session ID in format {ticketId}-{paneName}
@@ -22,7 +23,7 @@ function getSessionId(taskId: string, paneName: string): string {
 
 export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManagerProps>(
   function TerminalManager(
-    { activeTaskIds, currentTaskId, currentPane, panes, defaultCwd, taskCwdMap },
+    { activeTaskIds, currentTaskId, currentPane, panes, defaultCwd, taskCwdMap, setupSessions },
     ref
   ) {
     // Track which sessions have been activated (for lazy creation)
@@ -82,18 +83,46 @@ export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManager
       <>
         {activeTaskIds.flatMap((taskId) => {
           const taskCwd = taskCwdMap?.[taskId] || defaultCwd;
+          const setupSession = setupSessions?.[taskId];
 
-          return allPaneNames.map((paneName) => {
+          // Collect terminals for this task
+          const terminals: React.ReactNode[] = [];
+
+          // Handle setup pane if it exists
+          if (setupSession) {
+            const setupSessionId = setupSession;
+            const isSetupVisible = taskId === currentTaskId && currentPane === "setup";
+            const isSetupActivated = activatedSessions.current.has(setupSessionId);
+
+            if (isSetupActivated || isSetupVisible) {
+              terminals.push(
+                <Terminal
+                  key={setupSessionId}
+                  ref={(handle) => {
+                    if (handle) {
+                      terminalRefs.current.set(setupSessionId, handle);
+                    }
+                  }}
+                  visible={isSetupVisible}
+                  sessionId={setupSessionId}
+                  cwd={taskCwd}
+                />
+              );
+            }
+          }
+
+          // Handle regular panes
+          allPaneNames.forEach((paneName) => {
             const sessionId = getSessionId(taskId, paneName);
             const isVisible = taskId === currentTaskId && paneName === currentPane;
             const isActivated = activatedSessions.current.has(sessionId);
 
             // Lazy creation: only render terminal if it has been activated
             if (!isActivated && !isVisible) {
-              return null;
+              return;
             }
 
-            return (
+            terminals.push(
               <Terminal
                 key={sessionId}
                 ref={(handle) => {
@@ -107,6 +136,8 @@ export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManager
               />
             );
           });
+
+          return terminals;
         })}
       </>
     );

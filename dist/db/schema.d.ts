@@ -388,6 +388,25 @@ export declare const tickets: import("drizzle-orm/sqlite-core").SQLiteTableWithC
         }, {}, {
             length: number | undefined;
         }>;
+        setupTmuxSession: import("drizzle-orm/sqlite-core").SQLiteColumn<{
+            name: "setup_tmux_session";
+            tableName: "tickets";
+            dataType: "string";
+            columnType: "SQLiteText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            length: number | undefined;
+        }>;
         description: import("drizzle-orm/sqlite-core").SQLiteColumn<{
             name: "description";
             tableName: "tickets";
