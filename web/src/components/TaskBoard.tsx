@@ -33,7 +33,7 @@ interface CommitInfo {
   message: string;
 }
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "http://localhost:3325";
 
 type SetupStatus = "pending" | "creating_worktree" | "running_post_command" | "ready" | "failed";
 

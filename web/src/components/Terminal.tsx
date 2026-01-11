@@ -3,7 +3,7 @@ import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 
-const WS_BASE = "ws://localhost:3000";
+const WS_BASE = "ws://localhost:3325";
 
 export interface TerminalHandle {
   close: () => void;

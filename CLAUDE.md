@@ -49,7 +49,7 @@ Path alias `@/*` maps to `./src/*` in the frontend.
 
 ### Backend Structure
 
-- `src/index.ts` - Express server (port 3000), health check at `/health`
+- `src/index.ts` - Express server (port 3325), health check at `/health`
 - `src/pty.ts` - WebSocket server at `/pty` for terminal sessions (uses node-pty)
 - `src/db/schema.ts` - Drizzle schema definitions
 - `src/db/index.ts` - Database client (SQLite at `data/sqlite.db`)

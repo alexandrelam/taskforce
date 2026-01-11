@@ -10,7 +10,7 @@ import { slugify, createWorktree, removeWorktree, runPostWorktreeCommand } from 
 
 const app = express();
 app.use(cors());
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3325;
 
 app.use(express.json());
 

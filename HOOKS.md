@@ -32,7 +32,7 @@ Add to `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3000/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
           }
         ]
       }
@@ -42,7 +42,7 @@ Add to `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3000/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
           }
         ]
       }
@@ -52,7 +52,7 @@ Add to `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3000/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
           }
         ]
       }
@@ -73,7 +73,7 @@ Add to `.claude/settings.json` in your project root:
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3000/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
           }
         ]
       }
@@ -83,7 +83,7 @@ Add to `.claude/settings.json` in your project root:
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3000/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
           }
         ]
       }
@@ -93,7 +93,7 @@ Add to `.claude/settings.json` in your project root:
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3000/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
           }
         ]
       }
@@ -118,12 +118,12 @@ You can manually test the endpoints:
 
 ```bash
 # Test start tracking (replace with actual worktree path)
-curl -X POST http://localhost:3000/api/tickets/track/start \
+curl -X POST http://localhost:3325/api/tickets/track/start \
   -H "Content-Type: application/json" \
   -d '{"cwd": "/path/to/your/worktree"}'
 
 # Test stop tracking
-curl -X POST http://localhost:3000/api/tickets/track/stop \
+curl -X POST http://localhost:3325/api/tickets/track/stop \
   -H "Content-Type: application/json" \
   -d '{"cwd": "/path/to/your/worktree"}'
 ```
@@ -153,7 +153,7 @@ curl -X POST http://localhost:3000/api/tickets/track/stop \
 ### Server not responding
 
 1. Ensure the server is running: `npm run dev`
-2. Check that port 3000 is accessible
+2. Check that port 3325 is accessible
 3. Look for errors in the server console
 
 ### Ticket not updating
