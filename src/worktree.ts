@@ -83,7 +83,7 @@ export function createWorktree(projectPath: string, ticketSlug: string): Worktre
 
   try {
     // Create worktree from current branch
-    execSync(`git worktree add "${worktreePath}" -b "${worktreeName}" ${branch}`, {
+    execSync(`git worktree add "${worktreePath}" -b "${ticketSlug}" ${branch}`, {
       cwd: projectPath,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
