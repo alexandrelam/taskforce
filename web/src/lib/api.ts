@@ -68,6 +68,7 @@ export const ticketsApi = {
     title: string;
     projectId: string;
     description?: string | null;
+    runPostCommand?: boolean;
   }): Promise<TicketResponse> => {
     const res = await fetch(`${API_BASE}/api/tickets`, {
       method: "POST",

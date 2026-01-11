@@ -69,13 +69,14 @@ export function useTickets(selectedProjectId: string | null) {
   }, [selectedProjectId]);
 
   const createTicket = useCallback(
-    async (title: string, description?: string) => {
+    async (title: string, description?: string, runPostCommand: boolean = true) => {
       if (!selectedProjectId) return null;
 
       const ticket = await ticketsApi.create({
         title: title.trim(),
         projectId: selectedProjectId,
         description: description?.trim() || null,
+        runPostCommand,
       });
 
       setColumns((prev) => ({

@@ -15,7 +15,7 @@ interface TaskBoardHeaderProps {
   onProjectDropdownToggle: () => void;
   onSelectProject: (project: Project) => void;
   onPull: () => void;
-  onCreateTicket: (title: string, description: string) => Promise<void>;
+  onCreateTicket: (title: string, description: string, runPostCommand: boolean) => Promise<void>;
   onOpenBranch: (branchName: string, description: string) => Promise<void>;
   onProjectsChange: () => void;
 }
@@ -91,7 +91,11 @@ export function TaskBoardHeader({
           )}
           <span className="ml-1">Pull</span>
         </Button>
-        <CreateTicketDialog disabled={!selectedProject} onSubmit={onCreateTicket} />
+        <CreateTicketDialog
+          disabled={!selectedProject}
+          hasPostCommand={!!selectedProject?.postWorktreeCommand}
+          onSubmit={onCreateTicket}
+        />
         <OpenBranchDialog disabled={!selectedProject} onSubmit={onOpenBranch} />
         <ThemeToggle />
         <SettingsDialog onProjectsChange={onProjectsChange} />

@@ -89,7 +89,7 @@ function createWorktree(projectPath, ticketSlug) {
     }
     try {
         // Create worktree from current branch
-        (0, child_process_1.execSync)(`git worktree add "${worktreePath}" -b "${worktreeName}" ${branch}`, {
+        (0, child_process_1.execSync)(`git worktree add "${worktreePath}" -b "${ticketSlug}" ${branch}`, {
             cwd: projectPath,
             encoding: "utf-8",
             stdio: ["pipe", "pipe", "pipe"],
