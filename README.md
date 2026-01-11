@@ -1,6 +1,17 @@
-# Taskforce
+<p align="center">
+  <img src="web/public/taskforce-logo.png" alt="Taskforce" height="60">
+</p>
 
-A Kanban board for managing AI-assisted development workflows. Each ticket gets its own git worktree and integrated terminal, letting you work on multiple tasks in parallel with Claude Code.
+<p align="center">
+  <a href="https://github.com/alexandrelam/10x-claude/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D24-brightgreen" alt="Node">
+  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome">
+</p>
+
+<p align="center">
+  A Kanban board for managing AI-assisted development workflows.<br>
+  Each ticket gets its own git worktree and integrated terminal, letting you work on multiple tasks in parallel with Claude Code.
+</p>
 
 ## Features
 
@@ -12,7 +23,7 @@ A Kanban board for managing AI-assisted development workflows. Each ticket gets 
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 24+
 - Git
 - tmux (optional, for persistent terminal sessions)
 
@@ -73,4 +84,4 @@ Add these hooks to your Claude Code config to auto-track ticket progress:
 
 ## License
 
-ISC
+MIT
