@@ -6,6 +6,9 @@ function App() {
     <>
       <TaskBoard />
       <Toaster />
+      <div className="fixed bottom-4 left-4 text-sm text-muted-foreground">
+        Made with ❤️ by Alexandre LAM
+      </div>
     </>
   );
 }
