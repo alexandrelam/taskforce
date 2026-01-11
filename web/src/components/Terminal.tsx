@@ -1,9 +1,23 @@
 import { useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { useTheme } from "next-themes";
 import "@xterm/xterm/css/xterm.css";
 
 const WS_BASE = "ws://localhost:3325";
+
+const THEMES = {
+  light: {
+    background: "#ffffff",
+    foreground: "#1a1a1a",
+    cursor: "#1a1a1a",
+  },
+  dark: {
+    background: "#1a1a1a",
+    foreground: "#ffffff",
+    cursor: "#ffffff",
+  },
+};
 
 export interface TerminalHandle {
   close: () => void;
@@ -23,6 +37,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   const terminalRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const { resolvedTheme } = useTheme();
 
   useImperativeHandle(ref, () => ({
     close: () => {
@@ -33,18 +48,24 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     },
   }));
 
+  // Update terminal theme when app theme changes
+  useEffect(() => {
+    if (terminalRef.current && resolvedTheme) {
+      const themeColors = THEMES[resolvedTheme as keyof typeof THEMES] || THEMES.dark;
+      terminalRef.current.options.theme = themeColors;
+    }
+  }, [resolvedTheme]);
+
   useEffect(() => {
     if (!containerRef.current) return;
+
+    const themeColors = THEMES[resolvedTheme as keyof typeof THEMES] || THEMES.dark;
 
     const term = new XTerm({
       cursorBlink: true,
       fontSize: 14,
       fontFamily: "Menlo, Monaco, 'Courier New', monospace",
-      theme: {
-        background: "#1a1a1a",
-        foreground: "#ffffff",
-        cursor: "#ffffff",
-      },
+      theme: themeColors,
     });
 
     const fitAddon = new FitAddon();
@@ -106,7 +127,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       ws.close();
       term.dispose();
     };
-  }, [cwd, sessionId]);
+  }, [cwd, sessionId, resolvedTheme]);
 
   // Refit terminal when visibility changes
   useEffect(() => {
@@ -122,7 +143,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   return (
     <div
       ref={containerRef}
-      className="h-full w-full min-h-[300px] bg-[#1a1a1a] rounded-md overflow-hidden"
+      className="h-full w-full min-h-[300px] rounded-md overflow-hidden bg-background"
       style={{ display: visible ? "block" : "none" }}
     />
   );

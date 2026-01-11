@@ -9,6 +9,7 @@ import {
 import { TerminalManager, type TerminalManagerHandle } from "./TerminalManager";
 import { TerminalTabs } from "./TerminalTabs";
 import { SettingsDialog } from "./SettingsDialog";
+import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -499,6 +500,7 @@ export function TaskBoard() {
                 </form>
               </DialogContent>
             </Dialog>
+            <ThemeToggle />
             <SettingsDialog onProjectsChange={handleProjectsChange} />
           </div>
         </div>
