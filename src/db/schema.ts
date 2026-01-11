@@ -21,4 +21,5 @@ export const tickets = sqliteTable("tickets", {
   projectId: text("project_id"),
   worktreePath: text("worktree_path"),
   lastActivityAt: integer("last_activity_at"),
+  isMain: integer("is_main", { mode: "boolean" }),
 });

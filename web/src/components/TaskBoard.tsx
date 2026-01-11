@@ -24,7 +24,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { ChevronDown, Loader2, GitPullRequest } from "lucide-react";
+import { ChevronDown, Loader2, GitPullRequest, GitBranch } from "lucide-react";
 import { toast } from "sonner";
 
 interface CommitInfo {
@@ -38,6 +38,7 @@ interface Task {
   id: string;
   title: string;
   worktreePath?: string | null;
+  isMain?: boolean | null;
 }
 
 interface Project {
@@ -133,7 +134,13 @@ export function TaskBoard() {
         .then((res) => res.json())
         .then(
           (
-            tickets: { id: string; title: string; column: string; worktreePath?: string | null }[]
+            tickets: {
+              id: string;
+              title: string;
+              column: string;
+              worktreePath?: string | null;
+              isMain?: boolean | null;
+            }[]
           ) => {
             const newColumns: Columns = {
               "To Do": [],
@@ -143,7 +150,12 @@ export function TaskBoard() {
             tickets.forEach((ticket) => {
               const col = newColumns[ticket.column];
               if (col) {
-                col.push({ id: ticket.id, title: ticket.title, worktreePath: ticket.worktreePath });
+                col.push({
+                  id: ticket.id,
+                  title: ticket.title,
+                  worktreePath: ticket.worktreePath,
+                  isMain: ticket.isMain,
+                });
               }
             });
             setColumns(newColumns);
@@ -441,27 +453,37 @@ export function TaskBoard() {
                         className="group p-3 bg-card rounded-md border border-border hover:border-primary/50 transition-colors"
                       >
                         <div className="flex items-center justify-between">
-                          <div className="text-sm">{task.title}</div>
-                          <button
-                            onClick={(e) => handleDeleteTicket(e, task.id)}
-                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-opacity"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                          <div className="flex items-center gap-2 text-sm">
+                            {task.isMain && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded">
+                                <GitBranch className="h-3 w-3" />
+                                main
+                              </span>
+                            )}
+                            {!task.isMain && task.title}
+                          </div>
+                          {!task.isMain && (
+                            <button
+                              onClick={(e) => handleDeleteTicket(e, task.id)}
+                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-opacity"
                             >
-                              <path d="M3 6h18" />
-                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                            </svg>
-                          </button>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M3 6h18" />
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </KanbanItem>
                     ))}

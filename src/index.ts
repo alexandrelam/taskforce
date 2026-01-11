@@ -63,6 +63,19 @@ app.post("/api/projects", async (req: Request, res: Response) => {
     createdAt,
     postWorktreeCommand: postWorktreeCommand ?? null,
   });
+
+  // Auto-create main ticket for the project
+  const mainTicketId = crypto.randomUUID();
+  await db.insert(tickets).values({
+    id: mainTicketId,
+    title: "main",
+    column: "To Do",
+    createdAt,
+    projectId: id,
+    worktreePath: null,
+    isMain: true,
+  });
+
   res.json({ id, name, path, createdAt, postWorktreeCommand: postWorktreeCommand ?? null });
 });
 
@@ -196,6 +209,7 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
     createdAt,
     projectId: projectId ?? null,
     worktreePath,
+    isMain: false,
   });
 
   res.json({
@@ -208,15 +222,22 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
     worktreeError,
     postCommandOutput,
     postCommandError,
+    isMain: false,
   });
 });
 
 app.delete("/api/tickets/:id", async (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
 
-  // Get ticket to check for worktree
+  // Get ticket to check for worktree and main status
   const ticket = await db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
   const ticketData = ticket[0];
+
+  // Reject deletion of main tickets
+  if (ticketData?.isMain) {
+    res.status(403).json({ success: false, error: "Cannot delete main ticket" });
+    return;
+  }
 
   // Remove worktree if it exists
   if (ticketData?.worktreePath && ticketData?.projectId) {
