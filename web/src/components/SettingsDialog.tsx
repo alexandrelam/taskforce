@@ -34,6 +34,7 @@ interface Project {
   name: string;
   path: string;
   createdAt: number;
+  postWorktreeCommand: string | null;
 }
 
 type SectionName = "General" | "Projects";
@@ -53,9 +54,10 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectPath, setNewProjectPath] = useState("");
+  const [newProjectCommand, setNewProjectCommand] = useState("");
   const [saving, setSaving] = useState(false);
-  const [postWorktreeCommand, setPostWorktreeCommand] = useState("");
-  const [savingCommand, setSavingCommand] = useState(false);
+  const [editingCommandId, setEditingCommandId] = useState<string | null>(null);
+  const [editingCommandValue, setEditingCommandValue] = useState("");
 
   const fetchProjects = async () => {
     const res = await fetch(`${API_BASE}/api/projects`);
@@ -63,26 +65,18 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
     setProjects(data);
   };
 
-  const fetchPostWorktreeCommand = async () => {
-    const res = await fetch(`${API_BASE}/api/settings/worktree_post_command`);
-    const data = await res.json();
-    setPostWorktreeCommand(data.value ?? "");
-  };
-
-  const savePostWorktreeCommand = async () => {
-    setSavingCommand(true);
-    await fetch(`${API_BASE}/api/settings/worktree_post_command`, {
-      method: "PUT",
+  const saveProjectCommand = async (projectId: string, command: string) => {
+    await fetch(`${API_BASE}/api/projects/${projectId}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ value: postWorktreeCommand }),
+      body: JSON.stringify({ postWorktreeCommand: command }),
     });
-    setSavingCommand(false);
+    await fetchProjects();
   };
 
   useEffect(() => {
     if (open) {
       fetchProjects();
-      fetchPostWorktreeCommand();
     }
   }, [open]);
 
@@ -94,10 +88,15 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
     await fetch(`${API_BASE}/api/projects`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newProjectName.trim(), path: newProjectPath.trim() }),
+      body: JSON.stringify({
+        name: newProjectName.trim(),
+        path: newProjectPath.trim(),
+        postWorktreeCommand: newProjectCommand.trim() || null,
+      }),
     });
     setNewProjectName("");
     setNewProjectPath("");
+    setNewProjectCommand("");
     setSaving(false);
     await fetchProjects();
     onProjectsChange?.();
@@ -156,24 +155,10 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
             <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
               {activeSection === "General" && (
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="post-worktree-command">Post-worktree command</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Command to run after creating a git worktree for a new ticket (e.g., "npm i",
-                      "bundle install")
-                    </p>
-                    <Input
-                      id="post-worktree-command"
-                      placeholder="npm i"
-                      value={postWorktreeCommand}
-                      onChange={(e) => setPostWorktreeCommand(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <Button onClick={savePostWorktreeCommand} disabled={savingCommand}>
-                      {savingCommand ? "Saving..." : "Save"}
-                    </Button>
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    General settings will appear here. Project-specific settings like post-worktree
+                    commands can be configured in the Projects section.
+                  </p>
                 </div>
               )}
               {activeSection === "Projects" && (
@@ -185,23 +170,43 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
                         No projects yet. Create one below.
                       </p>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {projects.map((project) => (
-                          <div
-                            key={project.id}
-                            className="flex items-center justify-between rounded-md border p-3"
-                          >
-                            <div>
-                              <div className="font-medium">{project.name}</div>
-                              <div className="text-sm text-muted-foreground">{project.path}</div>
+                          <div key={project.id} className="rounded-md border p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="font-medium">{project.name}</div>
+                                <div className="text-sm text-muted-foreground">{project.path}</div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteProject(project.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteProject(project.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                placeholder="Post-worktree command (e.g., npm i)"
+                                value={
+                                  editingCommandId === project.id
+                                    ? editingCommandValue
+                                    : (project.postWorktreeCommand ?? "")
+                                }
+                                onChange={(e) => {
+                                  setEditingCommandId(project.id);
+                                  setEditingCommandValue(e.target.value);
+                                }}
+                                onBlur={() => {
+                                  if (editingCommandId === project.id) {
+                                    saveProjectCommand(project.id, editingCommandValue);
+                                    setEditingCommandId(null);
+                                  }
+                                }}
+                                className="text-sm"
+                              />
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -219,6 +224,11 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
                         placeholder="/path/to/your/project"
                         value={newProjectPath}
                         onChange={(e) => setNewProjectPath(e.target.value)}
+                      />
+                      <Input
+                        placeholder="Post-worktree command (e.g., npm i)"
+                        value={newProjectCommand}
+                        onChange={(e) => setNewProjectCommand(e.target.value)}
                       />
                     </div>
                     <div className="flex justify-end">

@@ -1,10 +1,4 @@
-# projects Specification
-
-## Purpose
-
-TBD - created by archiving change add-projects. Update Purpose after archive.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Projects Table
 
@@ -47,37 +41,3 @@ The system SHALL provide REST API endpoints for project CRUD operations.
 - **THEN** all tickets associated with that project are deleted
 - **AND** the project is deleted from the database
 - **AND** the response confirms success
-
-### Requirement: Project Selection Persistence
-
-The system SHALL persist the currently selected project in the database.
-
-#### Scenario: Store selected project
-
-- **WHEN** a user selects a project
-- **THEN** the project ID is stored with key `selected_project` in the settings table
-
-#### Scenario: Retrieve selected project
-
-- **WHEN** the application loads
-- **THEN** it fetches `GET /api/settings/selected_project` to restore the last selected project
-
-### Requirement: Project Selector UI
-
-The system SHALL provide a project selector in the main UI to switch between projects.
-
-#### Scenario: Project dropdown in header
-
-- **WHEN** the user views the TaskBoard
-- **THEN** a dropdown selector is visible in the header showing the current project name
-
-#### Scenario: Switching projects
-
-- **WHEN** the user selects a different project from the dropdown
-- **THEN** the kanban board updates to show only tickets from that project
-- **AND** the selection is persisted to the database
-
-#### Scenario: No project selected
-
-- **WHEN** no project is selected or no projects exist
-- **THEN** the kanban board shows an empty state prompting the user to create a project

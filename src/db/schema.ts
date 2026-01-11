@@ -10,6 +10,7 @@ export const projects = sqliteTable("projects", {
   name: text("name").notNull(),
   path: text("path").notNull(),
   createdAt: integer("created_at").notNull(),
+  postWorktreeCommand: text("post_worktree_command"),
 });
 
 export const tickets = sqliteTable("tickets", {
