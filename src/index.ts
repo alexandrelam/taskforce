@@ -42,26 +42,39 @@ app.put("/api/settings/:key", async (req: Request<{ key: string }>, res: Respons
   res.json({ success: true });
 });
 
+// Pane type for JSON parsing
+interface Pane {
+  name: string;
+}
+
 // Projects API
 app.get("/api/projects", async (_req: Request, res: Response) => {
   const result = await db.select().from(projects);
-  res.json(result);
+  // Parse panes JSON for each project
+  const projectsWithPanes = result.map((p) => ({
+    ...p,
+    panes: p.panes ? (JSON.parse(p.panes) as Pane[]) : [],
+  }));
+  res.json(projectsWithPanes);
 });
 
 app.post("/api/projects", async (req: Request, res: Response) => {
-  const { name, path, postWorktreeCommand } = req.body as {
+  const { name, path, postWorktreeCommand, panes } = req.body as {
     name: string;
     path: string;
     postWorktreeCommand?: string;
+    panes?: Pane[];
   };
   const id = crypto.randomUUID();
   const createdAt = Date.now();
+  const panesJson = panes ? JSON.stringify(panes) : null;
   await db.insert(projects).values({
     id,
     name,
     path,
     createdAt,
     postWorktreeCommand: postWorktreeCommand ?? null,
+    panes: panesJson,
   });
 
   // Auto-create main ticket for the project
@@ -76,7 +89,14 @@ app.post("/api/projects", async (req: Request, res: Response) => {
     isMain: true,
   });
 
-  res.json({ id, name, path, createdAt, postWorktreeCommand: postWorktreeCommand ?? null });
+  res.json({
+    id,
+    name,
+    path,
+    createdAt,
+    postWorktreeCommand: postWorktreeCommand ?? null,
+    panes: panes ?? [],
+  });
 });
 
 app.delete("/api/projects/:id", async (req: Request<{ id: string }>, res: Response) => {
@@ -107,11 +127,20 @@ app.delete("/api/projects/:id", async (req: Request<{ id: string }>, res: Respon
 
 app.patch("/api/projects/:id", async (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
-  const { postWorktreeCommand } = req.body as { postWorktreeCommand?: string };
-  await db
-    .update(projects)
-    .set({ postWorktreeCommand: postWorktreeCommand ?? null })
-    .where(eq(projects.id, id));
+  const { postWorktreeCommand, panes } = req.body as {
+    postWorktreeCommand?: string;
+    panes?: Pane[];
+  };
+  const updateData: { postWorktreeCommand?: string | null; panes?: string | null } = {};
+
+  if (postWorktreeCommand !== undefined) {
+    updateData.postWorktreeCommand = postWorktreeCommand || null;
+  }
+  if (panes !== undefined) {
+    updateData.panes = JSON.stringify(panes);
+  }
+
+  await db.update(projects).set(updateData).where(eq(projects.id, id));
   res.json({ success: true });
 });
 

@@ -7,6 +7,7 @@ import {
   KanbanOverlay,
 } from "@/components/ui/kanban";
 import { TerminalManager, type TerminalManagerHandle } from "./TerminalManager";
+import { TerminalTabs } from "./TerminalTabs";
 import { SettingsDialog } from "./SettingsDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,11 +47,16 @@ interface Task {
   setupLogs?: string | null;
 }
 
+interface Pane {
+  name: string;
+}
+
 interface Project {
   id: string;
   name: string;
   path: string;
   createdAt: number;
+  panes: Pane[];
 }
 
 type Columns = Record<UniqueIdentifier, Task[]>;
@@ -65,6 +71,7 @@ export function TaskBoard() {
   });
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activeTaskIds, setActiveTaskIds] = useState<string[]>([]);
+  const [currentPane, setCurrentPane] = useState<string>("claude");
   const [newTicketTitle, setNewTicketTitle] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -203,6 +210,8 @@ export function TaskBoard() {
 
   const handleCardClick = (task: Task) => {
     setSelectedTask(task);
+    // Reset to claude pane when clicking a new task
+    setCurrentPane("claude");
     // Add to active terminals if not already present
     setActiveTaskIds((prev) => (prev.includes(task.id) ? prev : [...prev, task.id]));
   };
@@ -636,12 +645,21 @@ export function TaskBoard() {
                   </svg>
                 </button>
               </div>
+              {isTaskReady && selectedProject && selectedProject.panes.length > 0 && (
+                <TerminalTabs
+                  panes={selectedProject.panes}
+                  activePane={currentPane}
+                  onPaneChange={setCurrentPane}
+                />
+              )}
               <div className="flex-1 p-4 overflow-auto">
                 {isTaskReady && (
                   <TerminalManager
                     ref={terminalManagerRef}
                     activeTaskIds={activeTaskIds}
                     currentTaskId={selectedTask.id}
+                    currentPane={currentPane}
+                    panes={selectedProject?.panes ?? []}
                     defaultCwd={selectedProject?.path}
                     taskCwdMap={taskCwdMap}
                   />
