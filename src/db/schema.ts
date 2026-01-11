@@ -22,4 +22,7 @@ export const tickets = sqliteTable("tickets", {
   worktreePath: text("worktree_path"),
   lastActivityAt: integer("last_activity_at"),
   isMain: integer("is_main", { mode: "boolean" }),
+  setupStatus: text("setup_status").notNull().default("ready"),
+  setupError: text("setup_error"),
+  setupLogs: text("setup_logs"),
 });
