@@ -21,6 +21,11 @@
 - **Claude Code Integration** - Auto-tracks ticket progress via hooks
 - **Multi-project Support** - Manage multiple repositories
 
+<img width="1438" height="898" alt="image" src="https://github.com/user-attachments/assets/d4f3770a-54e4-43d4-9b86-615a46d5b11c" />
+<img width="891" height="585" alt="image" src="https://github.com/user-attachments/assets/186cbd81-63b6-47cd-9fc7-d8740c01f5ed" />
+<img width="636" height="394" alt="image" src="https://github.com/user-attachments/assets/1e61ef3c-5dca-4ebe-ad45-d1a121228cdd" />
+
+
 ## Prerequisites
 
 - Node.js 24+
