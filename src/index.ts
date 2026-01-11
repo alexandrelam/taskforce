@@ -48,11 +48,21 @@ app.get("/api/projects", async (_req: Request, res: Response) => {
 });
 
 app.post("/api/projects", async (req: Request, res: Response) => {
-  const { name, path } = req.body as { name: string; path: string };
+  const { name, path, postWorktreeCommand } = req.body as {
+    name: string;
+    path: string;
+    postWorktreeCommand?: string;
+  };
   const id = crypto.randomUUID();
   const createdAt = Date.now();
-  await db.insert(projects).values({ id, name, path, createdAt });
-  res.json({ id, name, path, createdAt });
+  await db.insert(projects).values({
+    id,
+    name,
+    path,
+    createdAt,
+    postWorktreeCommand: postWorktreeCommand ?? null,
+  });
+  res.json({ id, name, path, createdAt, postWorktreeCommand: postWorktreeCommand ?? null });
 });
 
 app.delete("/api/projects/:id", async (req: Request<{ id: string }>, res: Response) => {
@@ -78,6 +88,16 @@ app.delete("/api/projects/:id", async (req: Request<{ id: string }>, res: Respon
   await db.delete(tickets).where(eq(tickets.projectId, id));
   // Delete the project
   await db.delete(projects).where(eq(projects.id, id));
+  res.json({ success: true });
+});
+
+app.patch("/api/projects/:id", async (req: Request<{ id: string }>, res: Response) => {
+  const { id } = req.params;
+  const { postWorktreeCommand } = req.body as { postWorktreeCommand?: string };
+  await db
+    .update(projects)
+    .set({ postWorktreeCommand: postWorktreeCommand ?? null })
+    .where(eq(projects.id, id));
   res.json({ success: true });
 });
 
@@ -114,19 +134,10 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
       worktreeError = result.error;
 
       // Run post-worktree command if worktree was created successfully
-      if (worktreePath) {
-        const commandSetting = await db
-          .select()
-          .from(settings)
-          .where(eq(settings.key, "worktree_post_command"))
-          .limit(1);
-        const command = commandSetting[0]?.value;
-
-        if (command) {
-          const cmdResult = runPostWorktreeCommand(worktreePath, command);
-          postCommandOutput = cmdResult.output;
-          postCommandError = cmdResult.error;
-        }
+      if (worktreePath && project[0].postWorktreeCommand) {
+        const cmdResult = runPostWorktreeCommand(worktreePath, project[0].postWorktreeCommand);
+        postCommandOutput = cmdResult.output;
+        postCommandError = cmdResult.error;
       }
     }
   }
