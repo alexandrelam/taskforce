@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, GitPullRequest } from "lucide-react";
 import { toast } from "sonner";
 import { Kanban, KanbanBoard, KanbanColumn, KanbanOverlay } from "@/components/ui/kanban";
@@ -47,10 +47,15 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
     useSensor(TouchSensor, { activationConstraint: { distance: 8 } })
   );
 
-  // Notify parent of column changes (for terminal panel sync)
+  // Notify parent whenever columns change (from polling or drag)
+  useEffect(() => {
+    onColumnsChange?.(columns);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columns]);
+
+  // Handle drag changes (updates local state + notifies parent)
   const wrappedHandleColumnsChange = (newColumns: Columns) => {
     handleColumnsChange(newColumns);
-    onColumnsChange?.(newColumns);
   };
 
   // Handlers
