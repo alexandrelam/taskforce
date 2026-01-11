@@ -380,7 +380,7 @@ export function TaskBoard() {
       <div className="flex-1 p-6 overflow-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold">Task Board</h1>
+            <img src="/taskforce-logo.png" alt="Taskforce" className="h-5" />
             {/* Project Selector */}
             <div className="relative">
               <button
