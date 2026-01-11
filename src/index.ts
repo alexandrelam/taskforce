@@ -3,7 +3,7 @@ import { createServer } from "http";
 import path from "path";
 import cors from "cors";
 import { eq } from "drizzle-orm";
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 import { setupPtyWebSocket, tmuxAvailable, killTmuxSession } from "./pty.js";
 import { db } from "./db/index.js";
 import { settings, tickets, projects } from "./db/schema.js";
@@ -56,11 +56,12 @@ app.get("/api/projects", async (_req: Request, res: Response) => {
 });
 
 app.post("/api/projects", async (req: Request, res: Response) => {
-  const { name, path, postWorktreeCommand, panes } = req.body as {
+  const { name, path, postWorktreeCommand, panes, editor } = req.body as {
     name: string;
     path: string;
     postWorktreeCommand?: string;
     panes?: Pane[];
+    editor?: string;
   };
   const id = crypto.randomUUID();
   const createdAt = Date.now();
@@ -72,6 +73,7 @@ app.post("/api/projects", async (req: Request, res: Response) => {
     createdAt,
     postWorktreeCommand: postWorktreeCommand ?? null,
     panes: panesJson,
+    editor: editor ?? null,
   });
 
   // Auto-create main ticket for the project
@@ -93,6 +95,7 @@ app.post("/api/projects", async (req: Request, res: Response) => {
     createdAt,
     postWorktreeCommand: postWorktreeCommand ?? null,
     panes: panes ?? [],
+    editor: editor ?? null,
   });
 });
 
@@ -124,17 +127,25 @@ app.delete("/api/projects/:id", async (req: Request<{ id: string }>, res: Respon
 
 app.patch("/api/projects/:id", async (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
-  const { postWorktreeCommand, panes } = req.body as {
+  const { postWorktreeCommand, panes, editor } = req.body as {
     postWorktreeCommand?: string;
     panes?: Pane[];
+    editor?: string | null;
   };
-  const updateData: { postWorktreeCommand?: string | null; panes?: string | null } = {};
+  const updateData: {
+    postWorktreeCommand?: string | null;
+    panes?: string | null;
+    editor?: string | null;
+  } = {};
 
   if (postWorktreeCommand !== undefined) {
     updateData.postWorktreeCommand = postWorktreeCommand || null;
   }
   if (panes !== undefined) {
     updateData.panes = JSON.stringify(panes);
+  }
+  if (editor !== undefined) {
+    updateData.editor = editor || null;
   }
 
   await db.update(projects).set(updateData).where(eq(projects.id, id));
@@ -424,6 +435,92 @@ app.patch(
     res.json({ success: true });
   }
 );
+
+// Open Editor API
+app.post("/api/tickets/:id/open-editor", async (req: Request<{ id: string }>, res: Response) => {
+  const { id } = req.params;
+  console.log(`[POST /api/tickets/:id/open-editor] Request to open editor for ticket '${id}'`);
+
+  // Get ticket
+  const ticketResult = await db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
+  const ticket = ticketResult[0];
+
+  if (!ticket) {
+    console.log(`[open-editor] Ticket '${id}' not found`);
+    res.status(404).json({ success: false, error: "Ticket not found" });
+    return;
+  }
+
+  // Get associated project
+  if (!ticket.projectId) {
+    console.log(`[open-editor] Ticket '${id}' has no associated project`);
+    res.status(400).json({ success: false, error: "Ticket has no associated project" });
+    return;
+  }
+
+  const projectResult = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.id, ticket.projectId))
+    .limit(1);
+  const project = projectResult[0];
+
+  if (!project) {
+    console.log(`[open-editor] Project not found for ticket '${id}'`);
+    res.status(404).json({ success: false, error: "Project not found" });
+    return;
+  }
+
+  if (!project.editor) {
+    console.log(`[open-editor] No editor configured for project '${project.id}'`);
+    res.status(400).json({ success: false, error: "No editor configured for this project" });
+    return;
+  }
+
+  // Determine the directory to open
+  // For main tickets, use project path; for regular tickets, use worktreePath
+  const targetPath = ticket.isMain ? project.path : ticket.worktreePath;
+
+  if (!targetPath) {
+    console.log(`[open-editor] No path available for ticket '${id}'`);
+    res.status(400).json({ success: false, error: "No path available for this ticket" });
+    return;
+  }
+
+  // Map editor name to command
+  const editorCommands: Record<string, { command: string; args: string[] }> = {
+    vscode: { command: "code", args: [targetPath] },
+    cursor: { command: "cursor", args: [targetPath] },
+    intellij: { command: "idea", args: [targetPath] },
+    neovim: { command: "open", args: ["-a", "Terminal", targetPath] },
+  };
+
+  const editorConfig = editorCommands[project.editor];
+  if (!editorConfig) {
+    console.log(`[open-editor] Unknown editor '${project.editor}'`);
+    res.status(400).json({ success: false, error: `Unknown editor: ${project.editor}` });
+    return;
+  }
+
+  try {
+    console.log(
+      `[open-editor] Spawning editor: ${editorConfig.command} ${editorConfig.args.join(" ")}`
+    );
+
+    // Spawn editor process detached so it runs independently
+    const child = spawn(editorConfig.command, editorConfig.args, {
+      detached: true,
+      stdio: "ignore",
+    });
+    child.unref();
+
+    res.json({ success: true });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[open-editor] Failed to launch editor: ${errorMessage}`);
+    res.status(500).json({ success: false, error: `Failed to launch editor: ${errorMessage}` });
+  }
+});
 
 // Ticket Tracking API (for Claude Code hooks)
 app.post("/api/tickets/track/start", async (req: Request, res: Response) => {

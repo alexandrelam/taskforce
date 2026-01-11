@@ -13,6 +13,7 @@ exports.projects = (0, sqlite_core_1.sqliteTable)("projects", {
     createdAt: (0, sqlite_core_1.integer)("created_at").notNull(),
     postWorktreeCommand: (0, sqlite_core_1.text)("post_worktree_command"),
     panes: (0, sqlite_core_1.text)("panes"),
+    editor: (0, sqlite_core_1.text)("editor"),
 });
 exports.tickets = (0, sqlite_core_1.sqliteTable)("tickets", {
     id: (0, sqlite_core_1.text)("id").primaryKey(),

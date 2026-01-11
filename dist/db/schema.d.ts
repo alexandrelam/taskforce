@@ -159,6 +159,25 @@ export declare const projects: import("drizzle-orm/sqlite-core").SQLiteTableWith
         }, {}, {
             length: number | undefined;
         }>;
+        editor: import("drizzle-orm/sqlite-core").SQLiteColumn<{
+            name: "editor";
+            tableName: "projects";
+            dataType: "string";
+            columnType: "SQLiteText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            length: number | undefined;
+        }>;
     };
     dialect: "sqlite";
 }>;

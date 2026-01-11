@@ -11,6 +11,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -40,7 +47,16 @@ interface Project {
   createdAt: number;
   postWorktreeCommand: string | null;
   panes: Pane[];
+  editor: string | null;
 }
+
+const EDITOR_OPTIONS = [
+  { value: "none", label: "None" },
+  { value: "vscode", label: "VS Code" },
+  { value: "cursor", label: "Cursor" },
+  { value: "neovim", label: "Neovim" },
+  { value: "intellij", label: "IntelliJ IDEA" },
+];
 
 type SectionName = "General" | "Projects";
 
@@ -79,6 +95,16 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
       body: JSON.stringify({ postWorktreeCommand: command }),
     });
     await fetchProjects();
+  };
+
+  const saveProjectEditor = async (projectId: string, editor: string) => {
+    await fetch(`${API_BASE}/api/projects/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ editor: editor === "none" ? null : editor }),
+    });
+    await fetchProjects();
+    onProjectsChange?.();
   };
 
   const addPane = async (projectId: string) => {
@@ -256,6 +282,24 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
                                 }}
                                 className="text-sm"
                               />
+                            </div>
+                            <div className="border-t pt-2 mt-2">
+                              <Label className="text-xs text-muted-foreground">Editor</Label>
+                              <Select
+                                value={project.editor || "none"}
+                                onValueChange={(value) => saveProjectEditor(project.id, value)}
+                              >
+                                <SelectTrigger className="w-full mt-1 h-8 text-sm">
+                                  <SelectValue placeholder="Select an editor" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {EDITOR_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div className="border-t pt-2 mt-2">
                               <Label className="text-xs text-muted-foreground">

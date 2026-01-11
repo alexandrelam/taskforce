@@ -17,9 +17,6 @@ const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 const port = process.env.PORT || 3325;
 app.use(express_1.default.json());
-app.get("/", (req, res) => {
-    res.json({ message: "Hello, World!" });
-});
 app.get("/health", (req, res) => {
     res.json({ status: "ok" });
 });
@@ -51,7 +48,7 @@ app.get("/api/projects", async (_req, res) => {
     res.json(projectsWithPanes);
 });
 app.post("/api/projects", async (req, res) => {
-    const { name, path, postWorktreeCommand, panes } = req.body;
+    const { name, path, postWorktreeCommand, panes, editor } = req.body;
     const id = crypto.randomUUID();
     const createdAt = Date.now();
     const panesJson = panes ? JSON.stringify(panes) : null;
@@ -62,6 +59,7 @@ app.post("/api/projects", async (req, res) => {
         createdAt,
         postWorktreeCommand: postWorktreeCommand ?? null,
         panes: panesJson,
+        editor: editor ?? null,
     });
     // Auto-create main ticket for the project
     const mainTicketId = crypto.randomUUID();
@@ -81,6 +79,7 @@ app.post("/api/projects", async (req, res) => {
         createdAt,
         postWorktreeCommand: postWorktreeCommand ?? null,
         panes: panes ?? [],
+        editor: editor ?? null,
     });
 });
 app.delete("/api/projects/:id", async (req, res) => {
@@ -108,13 +107,16 @@ app.delete("/api/projects/:id", async (req, res) => {
 });
 app.patch("/api/projects/:id", async (req, res) => {
     const { id } = req.params;
-    const { postWorktreeCommand, panes } = req.body;
+    const { postWorktreeCommand, panes, editor } = req.body;
     const updateData = {};
     if (postWorktreeCommand !== undefined) {
         updateData.postWorktreeCommand = postWorktreeCommand || null;
     }
     if (panes !== undefined) {
         updateData.panes = JSON.stringify(panes);
+    }
+    if (editor !== undefined) {
+        updateData.editor = editor || null;
     }
     await index_js_1.db.update(schema_js_1.projects).set(updateData).where((0, drizzle_orm_1.eq)(schema_js_1.projects.id, id));
     res.json({ success: true });
@@ -359,6 +361,77 @@ app.patch("/api/tickets/:id/clear-override", async (req, res) => {
     console.log(`[PATCH /api/tickets/:id/clear-override] Cleared override for ticket '${id}'`);
     res.json({ success: true });
 });
+// Open Editor API
+app.post("/api/tickets/:id/open-editor", async (req, res) => {
+    const { id } = req.params;
+    console.log(`[POST /api/tickets/:id/open-editor] Request to open editor for ticket '${id}'`);
+    // Get ticket
+    const ticketResult = await index_js_1.db.select().from(schema_js_1.tickets).where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, id)).limit(1);
+    const ticket = ticketResult[0];
+    if (!ticket) {
+        console.log(`[open-editor] Ticket '${id}' not found`);
+        res.status(404).json({ success: false, error: "Ticket not found" });
+        return;
+    }
+    // Get associated project
+    if (!ticket.projectId) {
+        console.log(`[open-editor] Ticket '${id}' has no associated project`);
+        res.status(400).json({ success: false, error: "Ticket has no associated project" });
+        return;
+    }
+    const projectResult = await index_js_1.db
+        .select()
+        .from(schema_js_1.projects)
+        .where((0, drizzle_orm_1.eq)(schema_js_1.projects.id, ticket.projectId))
+        .limit(1);
+    const project = projectResult[0];
+    if (!project) {
+        console.log(`[open-editor] Project not found for ticket '${id}'`);
+        res.status(404).json({ success: false, error: "Project not found" });
+        return;
+    }
+    if (!project.editor) {
+        console.log(`[open-editor] No editor configured for project '${project.id}'`);
+        res.status(400).json({ success: false, error: "No editor configured for this project" });
+        return;
+    }
+    // Determine the directory to open
+    // For main tickets, use project path; for regular tickets, use worktreePath
+    const targetPath = ticket.isMain ? project.path : ticket.worktreePath;
+    if (!targetPath) {
+        console.log(`[open-editor] No path available for ticket '${id}'`);
+        res.status(400).json({ success: false, error: "No path available for this ticket" });
+        return;
+    }
+    // Map editor name to command
+    const editorCommands = {
+        vscode: { command: "code", args: [targetPath] },
+        cursor: { command: "cursor", args: [targetPath] },
+        intellij: { command: "idea", args: [targetPath] },
+        neovim: { command: "open", args: ["-a", "Terminal", targetPath] },
+    };
+    const editorConfig = editorCommands[project.editor];
+    if (!editorConfig) {
+        console.log(`[open-editor] Unknown editor '${project.editor}'`);
+        res.status(400).json({ success: false, error: `Unknown editor: ${project.editor}` });
+        return;
+    }
+    try {
+        console.log(`[open-editor] Spawning editor: ${editorConfig.command} ${editorConfig.args.join(" ")}`);
+        // Spawn editor process detached so it runs independently
+        const child = (0, child_process_1.spawn)(editorConfig.command, editorConfig.args, {
+            detached: true,
+            stdio: "ignore",
+        });
+        child.unref();
+        res.json({ success: true });
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        console.error(`[open-editor] Failed to launch editor: ${errorMessage}`);
+        res.status(500).json({ success: false, error: `Failed to launch editor: ${errorMessage}` });
+    }
+});
 // Ticket Tracking API (for Claude Code hooks)
 app.post("/api/tickets/track/start", async (req, res) => {
     const { cwd } = req.body;
@@ -423,7 +496,7 @@ app.post("/api/tickets/track/stop", async (req, res) => {
 // Serve static files from web/dist (frontend build)
 app.use(express_1.default.static(path_1.default.join(__dirname, "../web/dist")));
 // SPA fallback - serve index.html for all non-API routes
-app.get("*", (req, res) => {
+app.get("/{*splat}", (req, res) => {
     res.sendFile(path_1.default.join(__dirname, "../web/dist/index.html"));
 });
 const server = (0, http_1.createServer)(app);

@@ -26,7 +26,15 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { ChevronDown, Loader2, GitPullRequest, GitBranch, AlertCircle, Lock } from "lucide-react";
+import {
+  ChevronDown,
+  Loader2,
+  GitPullRequest,
+  GitBranch,
+  AlertCircle,
+  Lock,
+  ExternalLink,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface CommitInfo {
@@ -60,6 +68,7 @@ interface Project {
   path: string;
   createdAt: number;
   panes: Pane[];
+  editor: string | null;
 }
 
 type Columns = Record<UniqueIdentifier, Task[]>;
@@ -312,6 +321,29 @@ export function TaskBoard() {
       });
     } catch (error) {
       console.error("Failed to clear override:", error);
+    }
+  };
+
+  const handleOpenEditor = async (e: React.MouseEvent, taskId: string) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`${API_BASE}/api/tickets/${taskId}/open-editor`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Editor opened", {
+          description: "Opening project in your configured editor",
+        });
+      } else {
+        toast.error("Failed to open editor", {
+          description: data.error,
+        });
+      }
+    } catch (error) {
+      toast.error("Failed to open editor", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   };
 
@@ -578,6 +610,15 @@ export function TaskBoard() {
                               {!task.isMain && task.title}
                             </div>
                             <div className="flex items-center gap-1">
+                              {selectedProject?.editor && !isSetupInProgress && !isSetupFailed && (
+                                <button
+                                  onClick={(e) => handleOpenEditor(e, task.id)}
+                                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary p-1 transition-opacity"
+                                  title="Open in editor"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </button>
+                              )}
                               {hasOverride && (
                                 <button
                                   onClick={(e) => handleClearOverride(e, task.id)}
