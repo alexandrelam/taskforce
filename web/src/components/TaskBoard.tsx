@@ -24,8 +24,13 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Loader2, GitPullRequest } from "lucide-react";
 import { toast } from "sonner";
+
+interface CommitInfo {
+  hash: string;
+  message: string;
+}
 
 const API_BASE = "http://localhost:3000";
 
@@ -64,6 +69,10 @@ export function TaskBoard() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
 
+  // Git state
+  const [commitInfo, setCommitInfo] = useState<CommitInfo | null>(null);
+  const [isPulling, setIsPulling] = useState(false);
+
   // Require 8px movement before drag starts - allows clicks to work
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -76,6 +85,21 @@ export function TaskBoard() {
     const data: Project[] = await res.json();
     setProjects(data);
     return data;
+  }, []);
+
+  // Fetch commit info for selected project
+  const fetchCommitInfo = useCallback(async (projectId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/projects/${projectId}/commit`);
+      if (res.ok) {
+        const data: CommitInfo = await res.json();
+        setCommitInfo(data);
+      } else {
+        setCommitInfo(null);
+      }
+    } catch {
+      setCommitInfo(null);
+    }
   }, []);
 
   // Load projects and selected project on mount
@@ -95,10 +119,11 @@ export function TaskBoard() {
     init();
   }, [fetchProjects]);
 
-  // Fetch tickets when selected project changes
+  // Fetch tickets and commit info when selected project changes
   useEffect(() => {
     if (!selectedProject) {
       setColumns({ "To Do": [], "In Progress": [], Done: [] });
+      setCommitInfo(null);
       return;
     }
 
@@ -123,7 +148,10 @@ export function TaskBoard() {
         }
       )
       .catch(console.error);
-  }, [selectedProject]);
+
+    // Fetch commit info
+    fetchCommitInfo(selectedProject.id);
+  }, [selectedProject, fetchCommitInfo]);
 
   const handleSelectProject = async (project: Project) => {
     setSelectedProject(project);
@@ -230,6 +258,36 @@ export function TaskBoard() {
     fetchProjects();
   };
 
+  const handlePull = async () => {
+    if (!selectedProject || isPulling) return;
+
+    setIsPulling(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/projects/${selectedProject.id}/pull`, {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success("Git pull successful", {
+          description: data.output?.trim() || "Repository updated",
+        });
+        // Refresh commit info after successful pull
+        fetchCommitInfo(selectedProject.id);
+      } else {
+        toast.error("Git pull failed", {
+          description: data.error,
+        });
+      }
+    } catch (error) {
+      toast.error("Git pull failed", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setIsPulling(false);
+    }
+  };
+
   // Build a map of task IDs to their worktree paths for terminal cwd
   const taskCwdMap = useMemo(() => {
     const map: Record<string, string | null | undefined> = {};
@@ -281,8 +339,31 @@ export function TaskBoard() {
                 </div>
               )}
             </div>
+            {selectedProject && commitInfo && (
+              <div className="text-sm text-muted-foreground">
+                <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
+                  {commitInfo.hash}
+                </span>
+                <span className="ml-2 truncate max-w-[200px] inline-block align-bottom">
+                  {commitInfo.message}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!selectedProject || isPulling}
+              onClick={handlePull}
+            >
+              {isPulling ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <GitPullRequest className="h-4 w-4" />
+              )}
+              <span className="ml-1">Pull</span>
+            </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" disabled={!selectedProject}>

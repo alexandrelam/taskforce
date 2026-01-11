@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import { createServer } from "http";
 import cors from "cors";
 import { eq } from "drizzle-orm";
+import { execSync } from "child_process";
 import { setupPtyWebSocket, tmuxAvailable, killTmuxSession } from "./pty.js";
 import { db } from "./db/index.js";
 import { settings, tickets, projects } from "./db/schema.js";
@@ -99,6 +100,52 @@ app.patch("/api/projects/:id", async (req: Request<{ id: string }>, res: Respons
     .set({ postWorktreeCommand: postWorktreeCommand ?? null })
     .where(eq(projects.id, id));
   res.json({ success: true });
+});
+
+// Git Commit Info API
+app.get("/api/projects/:id/commit", async (req: Request<{ id: string }>, res: Response) => {
+  const { id } = req.params;
+
+  const project = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+  if (!project[0]) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  try {
+    const output = execSync('git log -1 --format="%h %s"', {
+      cwd: project[0].path,
+      encoding: "utf-8",
+    }).trim();
+    const [hash, ...messageParts] = output.split(" ");
+    const message = messageParts.join(" ");
+    res.json({ hash, message });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+// Git Pull API
+app.post("/api/projects/:id/pull", async (req: Request<{ id: string }>, res: Response) => {
+  const { id } = req.params;
+
+  const project = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+  if (!project[0]) {
+    res.status(404).json({ success: false, error: "Project not found" });
+    return;
+  }
+
+  try {
+    const output = execSync("git pull", {
+      cwd: project[0].path,
+      encoding: "utf-8",
+    });
+    res.json({ success: true, output });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    res.status(500).json({ success: false, error: errorMessage });
+  }
 });
 
 // Tickets API
