@@ -67,6 +67,7 @@ The system SHALL define a tickets table in `src/db/schema.ts` for storing Kanban
   - `projectId` (text, nullable, foreign key to projects.id)
   - `worktreePath` (text, nullable)
   - `lastActivityAt` (integer, nullable, Unix timestamp of last Claude activity)
+  - `isMain` (integer, nullable, boolean flag for main branch tickets)
 
 ### Requirement: Projects Table
 
