@@ -855,8 +855,12 @@ export function TaskBoard() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this ticket?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete "{ticketToDelete?.title}". This action cannot be undone.
+            <AlertDialogDescription asChild>
+              <div className="text-sm text-muted-foreground">
+                <p className="mb-2">This will permanently delete:</p>
+                <p className="font-semibold text-foreground">{ticketToDelete?.title}</p>
+                <p className="mt-2">This action cannot be undone.</p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
