@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/alexandrelam/10x-claude/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="https://github.com/alexandrelam/10x-claude/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/node-%3E%3D24-brightgreen" alt="Node">
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome">
 </p>
@@ -24,7 +24,6 @@
 <img width="1438" height="898" alt="image" src="https://github.com/user-attachments/assets/d4f3770a-54e4-43d4-9b86-615a46d5b11c" />
 <img width="891" height="585" alt="image" src="https://github.com/user-attachments/assets/186cbd81-63b6-47cd-9fc7-d8740c01f5ed" />
 <img width="636" height="394" alt="image" src="https://github.com/user-attachments/assets/1e61ef3c-5dca-4ebe-ad45-d1a121228cdd" />
-
 
 ## Prerequisites
 
@@ -89,4 +88,4 @@ Add these hooks to your Claude Code config to auto-track ticket progress:
 
 ## License
 
-MIT
+AGPL-3.0
