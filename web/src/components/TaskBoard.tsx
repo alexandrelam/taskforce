@@ -351,13 +351,11 @@ export function TaskBoard() {
               )}
             </div>
             {selectedProject && commitInfo && (
-              <div className="text-sm text-muted-foreground">
-                <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
+              <div className="flex-1 min-w-0 flex items-center text-sm text-muted-foreground">
+                <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded shrink-0">
                   {commitInfo.hash}
                 </span>
-                <span className="ml-2 truncate max-w-[200px] inline-block align-bottom">
-                  {commitInfo.message}
-                </span>
+                <span className="ml-2 truncate min-w-0">{commitInfo.message}</span>
               </div>
             )}
           </div>
