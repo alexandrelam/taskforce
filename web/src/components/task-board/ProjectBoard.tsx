@@ -137,58 +137,60 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
       </div>
 
       {/* Kanban Board */}
-      <Kanban
-        value={columns}
-        onValueChange={wrappedHandleColumnsChange}
-        getItemValue={(item) => item.id}
-        sensors={sensors}
-      >
-        <KanbanBoard>
-          {COLUMN_ORDER.map((columnId) => {
-            const tasks = columns[columnId] || [];
-            return (
-              <KanbanColumn key={columnId} value={columnId} className="w-72 shrink-0">
-                <div className="font-semibold text-muted-foreground mb-2 px-1">
-                  {columnId}
-                  <span className="ml-2 text-zinc-500 text-sm">{tasks.length}</span>
-                </div>
-                {tasks.map((task) => (
-                  <TicketCard
-                    key={task.id}
-                    task={task}
-                    columnEnteredAt={columnEnteredAt[task.id]}
-                    hasEditor={!!project.editor}
-                    isDeleting={deletingTicketId === task.id}
-                    onClick={() => onOpenTask(task, project.id)}
-                    onDelete={(e) => handleDeleteTicketClick(e, task)}
-                    onClearOverride={(e) => handleClearOverride(e, task.id)}
-                    onOpenEditor={(e) => handleOpenEditor(e, task.id)}
-                  />
-                ))}
-              </KanbanColumn>
-            );
-          })}
-        </KanbanBoard>
-        <KanbanOverlay>
-          {({ value, variant }) => {
-            if (variant === "column") {
+      <div className="overflow-x-auto">
+        <Kanban
+          value={columns}
+          onValueChange={wrappedHandleColumnsChange}
+          getItemValue={(item) => item.id}
+          sensors={sensors}
+        >
+          <KanbanBoard>
+            {COLUMN_ORDER.map((columnId) => {
+              const tasks = columns[columnId] || [];
               return (
-                <div className="w-72 p-3 bg-card rounded-lg border border-border opacity-90">
-                  {value}
+                <KanbanColumn key={columnId} value={columnId} className="w-72 shrink-0">
+                  <div className="font-semibold text-muted-foreground mb-2 px-1">
+                    {columnId}
+                    <span className="ml-2 text-zinc-500 text-sm">{tasks.length}</span>
+                  </div>
+                  {tasks.map((task) => (
+                    <TicketCard
+                      key={task.id}
+                      task={task}
+                      columnEnteredAt={columnEnteredAt[task.id]}
+                      hasEditor={!!project.editor}
+                      isDeleting={deletingTicketId === task.id}
+                      onClick={() => onOpenTask(task, project.id)}
+                      onDelete={(e) => handleDeleteTicketClick(e, task)}
+                      onClearOverride={(e) => handleClearOverride(e, task.id)}
+                      onOpenEditor={(e) => handleOpenEditor(e, task.id)}
+                    />
+                  ))}
+                </KanbanColumn>
+              );
+            })}
+          </KanbanBoard>
+          <KanbanOverlay>
+            {({ value, variant }) => {
+              if (variant === "column") {
+                return (
+                  <div className="w-72 p-3 bg-card rounded-lg border border-border opacity-90">
+                    {value}
+                  </div>
+                );
+              }
+              const task = Object.values(columns)
+                .flat()
+                .find((t) => t.id === value);
+              return (
+                <div className="p-3 bg-card rounded-md border border-border opacity-90">
+                  {task?.title}
                 </div>
               );
-            }
-            const task = Object.values(columns)
-              .flat()
-              .find((t) => t.id === value);
-            return (
-              <div className="p-3 bg-card rounded-md border border-border opacity-90">
-                {task?.title}
-              </div>
-            );
-          }}
-        </KanbanOverlay>
-      </Kanban>
+            }}
+          </KanbanOverlay>
+        </Kanban>
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <DeleteTicketDialog
