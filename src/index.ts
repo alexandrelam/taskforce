@@ -202,57 +202,138 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
   }
 });
 
+// Async function to run ticket setup (worktree creation + post-command) in background
+async function runTicketSetup(
+  ticketId: string,
+  projectPath: string,
+  slug: string,
+  postWorktreeCommand: string | null
+) {
+  try {
+    // Update status to creating_worktree
+    await db
+      .update(tickets)
+      .set({ setupStatus: "creating_worktree" })
+      .where(eq(tickets.id, ticketId));
+
+    // Create worktree
+    const result = createWorktree(projectPath, slug);
+
+    if (result.error) {
+      await db
+        .update(tickets)
+        .set({
+          setupStatus: "failed",
+          setupError: result.error,
+        })
+        .where(eq(tickets.id, ticketId));
+      return;
+    }
+
+    // Update worktreePath
+    await db
+      .update(tickets)
+      .set({ worktreePath: result.worktreePath })
+      .where(eq(tickets.id, ticketId));
+
+    // Run post-worktree command if configured
+    if (result.worktreePath && postWorktreeCommand) {
+      await db
+        .update(tickets)
+        .set({ setupStatus: "running_post_command" })
+        .where(eq(tickets.id, ticketId));
+
+      const cmdResult = runPostWorktreeCommand(result.worktreePath, postWorktreeCommand);
+
+      if (cmdResult.error) {
+        await db
+          .update(tickets)
+          .set({
+            setupStatus: "failed",
+            setupError: cmdResult.error,
+            setupLogs: cmdResult.output,
+          })
+          .where(eq(tickets.id, ticketId));
+        return;
+      }
+
+      // Store logs on success
+      await db
+        .update(tickets)
+        .set({
+          setupStatus: "ready",
+          setupLogs: cmdResult.output,
+        })
+        .where(eq(tickets.id, ticketId));
+    } else {
+      // No post-command, mark as ready
+      await db.update(tickets).set({ setupStatus: "ready" }).where(eq(tickets.id, ticketId));
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    await db
+      .update(tickets)
+      .set({
+        setupStatus: "failed",
+        setupError: errorMessage,
+      })
+      .where(eq(tickets.id, ticketId));
+  }
+}
+
 app.post("/api/tickets", async (req: Request, res: Response) => {
   const { title, projectId } = req.body as { title: string; projectId?: string };
   const id = crypto.randomUUID();
   const createdAt = Date.now();
 
-  let worktreePath: string | null = null;
-  let worktreeError: string | null = null;
-  let postCommandOutput: string | null = null;
-  let postCommandError: string | null = null;
+  // Determine if we need async setup
+  let needsSetup = false;
+  let projectPath: string | null = null;
+  let postWorktreeCommand: string | null = null;
+  let slug: string | null = null;
 
-  // Create worktree if project is specified
   if (projectId) {
     const project = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-
     if (project[0]?.path) {
-      const slug = slugify(title);
-      const result = createWorktree(project[0].path, slug);
-      worktreePath = result.worktreePath;
-      worktreeError = result.error;
-
-      // Run post-worktree command if worktree was created successfully
-      if (worktreePath && project[0].postWorktreeCommand) {
-        const cmdResult = runPostWorktreeCommand(worktreePath, project[0].postWorktreeCommand);
-        postCommandOutput = cmdResult.output;
-        postCommandError = cmdResult.error;
-      }
+      needsSetup = true;
+      projectPath = project[0].path;
+      postWorktreeCommand = project[0].postWorktreeCommand ?? null;
+      slug = slugify(title);
     }
   }
 
+  // Insert ticket immediately with pending status if setup needed
   await db.insert(tickets).values({
     id,
     title,
     column: "To Do",
     createdAt,
     projectId: projectId ?? null,
-    worktreePath,
+    worktreePath: null,
     isMain: false,
+    setupStatus: needsSetup ? "pending" : "ready",
+    setupError: null,
+    setupLogs: null,
   });
 
-  res.json({
+  // Return immediately
+  res.status(201).json({
     id,
     title,
     column: "To Do",
     createdAt,
     projectId: projectId ?? null,
-    worktreePath,
-    worktreeError,
-    postCommandOutput,
-    postCommandError,
+    worktreePath: null,
     isMain: false,
+    setupStatus: needsSetup ? "pending" : "ready",
   });
+
+  // Run setup in background (fire and forget)
+  if (needsSetup && projectPath && slug) {
+    runTicketSetup(id, projectPath, slug, postWorktreeCommand).catch((err) => {
+      console.error(`Background setup failed for ticket ${id}:`, err);
+    });
+  }
 });
 
 app.delete("/api/tickets/:id", async (req: Request<{ id: string }>, res: Response) => {

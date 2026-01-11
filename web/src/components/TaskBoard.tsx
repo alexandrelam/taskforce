@@ -25,7 +25,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { ChevronDown, Loader2, GitPullRequest, GitBranch } from "lucide-react";
+import { ChevronDown, Loader2, GitPullRequest, GitBranch, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface CommitInfo {
@@ -35,11 +35,16 @@ interface CommitInfo {
 
 const API_BASE = "http://localhost:3000";
 
+type SetupStatus = "pending" | "creating_worktree" | "running_post_command" | "ready" | "failed";
+
 interface Task {
   id: string;
   title: string;
   worktreePath?: string | null;
   isMain?: boolean | null;
+  setupStatus?: SetupStatus;
+  setupError?: string | null;
+  setupLogs?: string | null;
 }
 
 interface Pane {
@@ -147,6 +152,9 @@ export function TaskBoard() {
               column: string;
               worktreePath?: string | null;
               isMain?: boolean | null;
+              setupStatus?: SetupStatus;
+              setupError?: string | null;
+              setupLogs?: string | null;
             }[]
           ) => {
             const newColumns: Columns = {
@@ -162,6 +170,9 @@ export function TaskBoard() {
                   title: ticket.title,
                   worktreePath: ticket.worktreePath,
                   isMain: ticket.isMain,
+                  setupStatus: ticket.setupStatus,
+                  setupError: ticket.setupError,
+                  setupLogs: ticket.setupLogs,
                 });
               }
             });
@@ -228,18 +239,16 @@ export function TaskBoard() {
         ...prev,
         "To Do": [
           ...prev["To Do"],
-          { id: ticket.id, title: ticket.title, worktreePath: ticket.worktreePath },
+          {
+            id: ticket.id,
+            title: ticket.title,
+            worktreePath: ticket.worktreePath,
+            setupStatus: ticket.setupStatus,
+          },
         ],
       }));
       setNewTicketTitle("");
       setDialogOpen(false);
-
-      // Show error if worktree creation failed
-      if (ticket.worktreeError) {
-        toast.error("Failed to create git worktree", {
-          description: ticket.worktreeError,
-        });
-      }
     } catch (error) {
       console.error("Failed to create ticket:", error);
     } finally {
@@ -336,6 +345,24 @@ export function TaskBoard() {
       });
     return map;
   }, [columns]);
+
+  // Keep selectedTask in sync with columns data (for updated setupStatus, etc.)
+  useEffect(() => {
+    if (selectedTask) {
+      const updatedTask = Object.values(columns)
+        .flat()
+        .find((t) => t.id === selectedTask.id);
+      if (
+        updatedTask &&
+        (updatedTask.setupStatus !== selectedTask.setupStatus ||
+          updatedTask.setupError !== selectedTask.setupError ||
+          updatedTask.setupLogs !== selectedTask.setupLogs ||
+          updatedTask.worktreePath !== selectedTask.worktreePath)
+      ) {
+        setSelectedTask(updatedTask);
+      }
+    }
+  }, [columns, selectedTask]);
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -453,49 +480,88 @@ export function TaskBoard() {
                       {columnId}
                       <span className="ml-2 text-zinc-500 text-sm">{tasks.length}</span>
                     </div>
-                    {tasks.map((task) => (
-                      <KanbanItem
-                        key={task.id}
-                        value={task.id}
-                        asHandle
-                        onClick={() => handleCardClick(task)}
-                        className="group p-3 bg-card rounded-md border border-border hover:border-primary/50 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-sm">
-                            {task.isMain && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded">
-                                <GitBranch className="h-3 w-3" />
-                                main
-                              </span>
-                            )}
-                            {!task.isMain && task.title}
-                          </div>
-                          {!task.isMain && (
-                            <button
-                              onClick={(e) => handleDeleteTicket(e, task.id)}
-                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-opacity"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
+                    {tasks.map((task) => {
+                      const isSetupInProgress =
+                        task.setupStatus === "pending" ||
+                        task.setupStatus === "creating_worktree" ||
+                        task.setupStatus === "running_post_command";
+                      const isSetupFailed = task.setupStatus === "failed";
+
+                      const getStatusText = () => {
+                        switch (task.setupStatus) {
+                          case "pending":
+                            return "Setting up...";
+                          case "creating_worktree":
+                            return "Creating worktree...";
+                          case "running_post_command":
+                            return "Installing dependencies...";
+                          default:
+                            return "";
+                        }
+                      };
+
+                      return (
+                        <KanbanItem
+                          key={task.id}
+                          value={task.id}
+                          asHandle
+                          onClick={() => handleCardClick(task)}
+                          className={`group p-3 bg-card rounded-md border transition-colors ${
+                            isSetupFailed
+                              ? "border-destructive/50 hover:border-destructive"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm">
+                              {isSetupInProgress && (
+                                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                              )}
+                              {isSetupFailed && (
+                                <AlertCircle className="h-3 w-3 text-destructive" />
+                              )}
+                              {task.isMain && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded">
+                                  <GitBranch className="h-3 w-3" />
+                                  main
+                                </span>
+                              )}
+                              {!task.isMain && task.title}
+                            </div>
+                            {!task.isMain && (
+                              <button
+                                onClick={(e) => handleDeleteTicket(e, task.id)}
+                                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-opacity"
                               >
-                                <path d="M3 6h18" />
-                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                              </svg>
-                            </button>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M3 6h18" />
+                                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                          {isSetupInProgress && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {getStatusText()}
+                            </div>
                           )}
-                        </div>
-                      </KanbanItem>
-                    ))}
+                          {isSetupFailed && (
+                            <div className="text-xs text-destructive mt-1">Setup failed</div>
+                          )}
+                        </KanbanItem>
+                      );
+                    })}
                   </KanbanColumn>
                 );
               })}
@@ -524,53 +590,128 @@ export function TaskBoard() {
       </div>
 
       {/* Terminal Panel */}
-      {selectedTask && (
-        <div className="w-[600px] border-l border-border flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b border-border">
-            <div>
-              <div className="text-sm text-muted-foreground">Terminal</div>
-              <div className="font-medium">{selectedTask.title}</div>
+      {selectedTask &&
+        (() => {
+          const isTaskReady = !selectedTask.setupStatus || selectedTask.setupStatus === "ready";
+          const isTaskFailed = selectedTask.setupStatus === "failed";
+          const isTaskInProgress =
+            selectedTask.setupStatus === "pending" ||
+            selectedTask.setupStatus === "creating_worktree" ||
+            selectedTask.setupStatus === "running_post_command";
+
+          const getPanelTitle = () => {
+            if (isTaskReady) return "Terminal";
+            if (isTaskFailed) return "Setup Failed";
+            return "Setting Up";
+          };
+
+          const getProgressText = () => {
+            switch (selectedTask.setupStatus) {
+              case "pending":
+                return "Preparing setup...";
+              case "creating_worktree":
+                return "Creating git worktree...";
+              case "running_post_command":
+                return "Running post-worktree command (e.g., npm install)...";
+              default:
+                return "";
+            }
+          };
+
+          return (
+            <div className="w-[600px] border-l border-border flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <div>
+                  <div className="text-sm text-muted-foreground">{getPanelTitle()}</div>
+                  <div className="font-medium">{selectedTask.title}</div>
+                </div>
+                <button
+                  onClick={handleClosePanel}
+                  className="text-muted-foreground hover:text-foreground p-1"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              {isTaskReady && selectedProject && selectedProject.panes.length > 0 && (
+                <TerminalTabs
+                  panes={selectedProject.panes}
+                  activePane={currentPane}
+                  onPaneChange={setCurrentPane}
+                />
+              )}
+              <div className="flex-1 p-4 overflow-auto">
+                {isTaskReady && (
+                  <TerminalManager
+                    ref={terminalManagerRef}
+                    activeTaskIds={activeTaskIds}
+                    currentTaskId={selectedTask.id}
+                    currentPane={currentPane}
+                    panes={selectedProject?.panes ?? []}
+                    defaultCwd={selectedProject?.path}
+                    taskCwdMap={taskCwdMap}
+                  />
+                )}
+                {isTaskInProgress && (
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                    <p className="text-lg font-medium mb-2">{getProgressText()}</p>
+                    <p className="text-sm text-muted-foreground">
+                      This may take a few minutes. You can continue using the app.
+                    </p>
+                    {selectedTask.setupLogs && (
+                      <div className="mt-4 w-full">
+                        <div className="text-xs text-muted-foreground mb-2 text-left">Output:</div>
+                        <pre className="text-xs bg-muted p-3 rounded-md overflow-auto max-h-64 text-left whitespace-pre-wrap">
+                          {selectedTask.setupLogs}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {isTaskFailed && (
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-center gap-2 text-destructive mb-4">
+                      <AlertCircle className="h-5 w-5" />
+                      <span className="font-medium">Setup Failed</span>
+                    </div>
+                    {selectedTask.setupError && (
+                      <div className="mb-4">
+                        <div className="text-xs text-muted-foreground mb-2">Error:</div>
+                        <pre className="text-sm bg-destructive/10 text-destructive p-3 rounded-md overflow-auto whitespace-pre-wrap">
+                          {selectedTask.setupError}
+                        </pre>
+                      </div>
+                    )}
+                    {selectedTask.setupLogs && (
+                      <div className="flex-1">
+                        <div className="text-xs text-muted-foreground mb-2">Output:</div>
+                        <pre className="text-xs bg-muted p-3 rounded-md overflow-auto max-h-64 whitespace-pre-wrap">
+                          {selectedTask.setupLogs}
+                        </pre>
+                      </div>
+                    )}
+                    <p className="text-sm text-muted-foreground mt-4">
+                      You can delete this ticket and try again.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-            <button
-              onClick={handleClosePanel}
-              className="text-muted-foreground hover:text-foreground p-1"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-          {selectedProject && selectedProject.panes.length > 0 && (
-            <TerminalTabs
-              panes={selectedProject.panes}
-              activePane={currentPane}
-              onPaneChange={setCurrentPane}
-            />
-          )}
-          <div className="flex-1 p-4">
-            <TerminalManager
-              ref={terminalManagerRef}
-              activeTaskIds={activeTaskIds}
-              currentTaskId={selectedTask.id}
-              currentPane={currentPane}
-              panes={selectedProject?.panes ?? []}
-              defaultCwd={selectedProject?.path}
-              taskCwdMap={taskCwdMap}
-            />
-          </div>
-        </div>
-      )}
+          );
+        })()}
     </div>
   );
 }
