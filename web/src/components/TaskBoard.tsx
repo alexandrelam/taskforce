@@ -87,13 +87,19 @@ type Columns = Record<UniqueIdentifier, Task[]>;
 const COLUMN_ORDER = ["To Do", "In Progress", "Done"];
 
 function formatElapsedTime(ms: number): string {
-  const totalMinutes = Math.floor(ms / 60000);
-  if (totalMinutes < 60) {
-    return `${totalMinutes}m`;
-  }
-  const hours = Math.floor(totalMinutes / 60);
+  const totalSeconds = Math.floor(ms / 1000);
+  const seconds = totalSeconds % 60;
+  const totalMinutes = Math.floor(totalSeconds / 60);
   const minutes = totalMinutes % 60;
-  return `${hours}h ${minutes}m`;
+  const hours = Math.floor(totalMinutes / 60);
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
 }
 
 export function TaskBoard() {
@@ -530,11 +536,11 @@ export function TaskBoard() {
     }
   }, [columns, selectedTask]);
 
-  // Update timer display every minute
+  // Update timer display every second
   useEffect(() => {
     const intervalId = setInterval(() => {
       setTimerTick((tick) => tick + 1);
-    }, 60000);
+    }, 1000);
     return () => clearInterval(intervalId);
   }, []);
 
