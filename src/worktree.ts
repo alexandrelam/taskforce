@@ -123,6 +123,50 @@ export function runPostWorktreeCommand(cwd: string, command: string): PostComman
 }
 
 /**
+ * Create a git worktree from an existing branch (local or remote)
+ * @param projectPath - The path to the project (main git repo)
+ * @param branchName - The name of the existing branch (e.g., "feature-x" or "origin/feature-x")
+ * @returns The worktree path or error
+ */
+export function createWorktreeFromBranch(projectPath: string, branchName: string): WorktreeResult {
+  if (!isGitRepo(projectPath)) {
+    return { worktreePath: null, error: "Project is not a git repository" };
+  }
+
+  const projectName = path.basename(projectPath);
+  const parentDir = path.dirname(projectPath);
+
+  // Sanitize branch name for directory: remove "origin/" prefix and slugify
+  const branchSlug = slugify(branchName.replace(/^origin\//, ""));
+  const worktreeName = `${projectName}-${branchSlug}`;
+  const worktreePath = path.join(parentDir, worktreeName);
+
+  try {
+    // Check if branch exists (local or remote)
+    execSync(`git rev-parse --verify "${branchName}"`, {
+      cwd: projectPath,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+  } catch {
+    return { worktreePath: null, error: `Branch '${branchName}' not found` };
+  }
+
+  try {
+    // Create worktree from existing branch (no -b flag)
+    execSync(`git worktree add "${worktreePath}" "${branchName}"`, {
+      cwd: projectPath,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return { worktreePath, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { worktreePath: null, error: message };
+  }
+}
+
+/**
  * Remove a git worktree
  * @param projectPath - The path to the main project (git repo)
  * @param worktreePath - The path to the worktree to remove

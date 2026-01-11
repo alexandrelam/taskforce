@@ -243,6 +243,74 @@ async function runTicketSetup(ticketId, projectPath, slug, postWorktreeCommand) 
             .where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, ticketId));
     }
 }
+// Async function to run ticket setup from an existing branch
+async function runBranchTicketSetup(ticketId, projectPath, branchName, postWorktreeCommand) {
+    try {
+        // Update status to creating_worktree
+        await index_js_1.db
+            .update(schema_js_1.tickets)
+            .set({ setupStatus: "creating_worktree" })
+            .where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, ticketId));
+        // Create worktree from existing branch
+        const result = (0, worktree_js_1.createWorktreeFromBranch)(projectPath, branchName);
+        if (result.error) {
+            await index_js_1.db
+                .update(schema_js_1.tickets)
+                .set({
+                setupStatus: "failed",
+                setupError: result.error,
+            })
+                .where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, ticketId));
+            return;
+        }
+        // Update worktreePath
+        await index_js_1.db
+            .update(schema_js_1.tickets)
+            .set({ worktreePath: result.worktreePath })
+            .where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, ticketId));
+        // Run post-worktree command if configured
+        if (result.worktreePath && postWorktreeCommand) {
+            await index_js_1.db
+                .update(schema_js_1.tickets)
+                .set({ setupStatus: "running_post_command" })
+                .where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, ticketId));
+            const cmdResult = (0, worktree_js_1.runPostWorktreeCommand)(result.worktreePath, postWorktreeCommand);
+            if (cmdResult.error) {
+                await index_js_1.db
+                    .update(schema_js_1.tickets)
+                    .set({
+                    setupStatus: "failed",
+                    setupError: cmdResult.error,
+                    setupLogs: cmdResult.output,
+                })
+                    .where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, ticketId));
+                return;
+            }
+            // Store logs on success
+            await index_js_1.db
+                .update(schema_js_1.tickets)
+                .set({
+                setupStatus: "ready",
+                setupLogs: cmdResult.output,
+            })
+                .where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, ticketId));
+        }
+        else {
+            // No post-command, mark as ready
+            await index_js_1.db.update(schema_js_1.tickets).set({ setupStatus: "ready" }).where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, ticketId));
+        }
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        await index_js_1.db
+            .update(schema_js_1.tickets)
+            .set({
+            setupStatus: "failed",
+            setupError: errorMessage,
+        })
+            .where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, ticketId));
+    }
+}
 app.post("/api/tickets", async (req, res) => {
     const { title, projectId, description } = req.body;
     const id = crypto.randomUUID();
@@ -293,6 +361,55 @@ app.post("/api/tickets", async (req, res) => {
             console.error(`Background setup failed for ticket ${id}:`, err);
         });
     }
+});
+// Create ticket from existing branch
+app.post("/api/tickets/from-branch", async (req, res) => {
+    const { branchName, projectId, description } = req.body;
+    if (!branchName || !projectId) {
+        res.status(400).json({ success: false, error: "branchName and projectId are required" });
+        return;
+    }
+    const project = await index_js_1.db.select().from(schema_js_1.projects).where((0, drizzle_orm_1.eq)(schema_js_1.projects.id, projectId)).limit(1);
+    if (!project[0]?.path) {
+        res.status(404).json({ success: false, error: "Project not found" });
+        return;
+    }
+    const id = crypto.randomUUID();
+    const createdAt = Date.now();
+    const projectPath = project[0].path;
+    const postWorktreeCommand = project[0].postWorktreeCommand ?? null;
+    // Use branch name as title
+    const title = branchName;
+    // Insert ticket immediately with pending status
+    await index_js_1.db.insert(schema_js_1.tickets).values({
+        id,
+        title,
+        column: "To Do",
+        createdAt,
+        projectId,
+        worktreePath: null,
+        isMain: false,
+        setupStatus: "pending",
+        setupError: null,
+        setupLogs: null,
+        description: description ?? null,
+    });
+    // Return immediately
+    res.status(201).json({
+        id,
+        title,
+        column: "To Do",
+        createdAt,
+        projectId,
+        worktreePath: null,
+        isMain: false,
+        setupStatus: "pending",
+        description: description ?? null,
+    });
+    // Run setup in background (fire and forget)
+    runBranchTicketSetup(id, projectPath, branchName, postWorktreeCommand).catch((err) => {
+        console.error(`Background setup failed for ticket ${id}:`, err);
+    });
 });
 app.delete("/api/tickets/:id", async (req, res) => {
     const { id } = req.params;
