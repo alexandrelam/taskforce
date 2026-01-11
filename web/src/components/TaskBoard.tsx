@@ -44,6 +44,7 @@ import {
   AlertCircle,
   Lock,
   ExternalLink,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -85,6 +86,16 @@ type Columns = Record<UniqueIdentifier, Task[]>;
 
 const COLUMN_ORDER = ["To Do", "In Progress", "Done"];
 
+function formatElapsedTime(ms: number): string {
+  const totalMinutes = Math.floor(ms / 60000);
+  if (totalMinutes < 60) {
+    return `${totalMinutes}m`;
+  }
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
+}
+
 export function TaskBoard() {
   const [columns, setColumns] = useState<Columns>({
     "To Do": [],
@@ -116,6 +127,11 @@ export function TaskBoard() {
   // Git state
   const [commitInfo, setCommitInfo] = useState<CommitInfo | null>(null);
   const [isPulling, setIsPulling] = useState(false);
+
+  // Timer state: tracks when each ticket entered its current column (in-memory only)
+  const [columnEnteredAt, setColumnEnteredAt] = useState<Record<string, number>>({});
+  // Trigger re-render for timer display updates
+  const [, setTimerTick] = useState(0);
 
   // Require 8px movement before drag starts - allows clicks to work
   const sensors = useSensors(
@@ -211,6 +227,17 @@ export function TaskBoard() {
               }
             });
             setColumns(newColumns);
+            // Initialize columnEnteredAt for new tickets (only if not already tracked)
+            setColumnEnteredAt((prev) => {
+              const now = Date.now();
+              const updated = { ...prev };
+              tickets.forEach((ticket) => {
+                if (!(ticket.id in updated)) {
+                  updated[ticket.id] = now;
+                }
+              });
+              return updated;
+            });
           }
         )
         .catch(console.error);
@@ -424,6 +451,11 @@ export function TaskBoard() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ column: colId }),
           }).catch(console.error);
+          // Reset timer when ticket moves to a different column
+          setColumnEnteredAt((prevTimes) => ({
+            ...prevTimes,
+            [task.id]: Date.now(),
+          }));
           break;
         }
       }
@@ -497,6 +529,14 @@ export function TaskBoard() {
       }
     }
   }, [columns, selectedTask]);
+
+  // Update timer display every minute
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setTimerTick((tick) => tick + 1);
+    }, 60000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -773,6 +813,12 @@ export function TaskBoard() {
                           )}
                           {isSetupFailed && (
                             <div className="text-xs text-destructive mt-1">Setup failed</div>
+                          )}
+                          {!isSetupInProgress && !isSetupFailed && columnEnteredAt[task.id] && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                              <Clock className="h-3 w-3" />
+                              {formatElapsedTime(Date.now() - columnEnteredAt[task.id])}
+                            </div>
                           )}
                         </KanbanItem>
                       );
