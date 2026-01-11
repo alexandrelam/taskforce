@@ -8,10 +8,11 @@ export interface TerminalManagerHandle {
 interface TerminalManagerProps {
   activeTaskIds: string[];
   currentTaskId: string | null;
+  cwd?: string;
 }
 
 export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManagerProps>(
-  function TerminalManager({ activeTaskIds, currentTaskId }, ref) {
+  function TerminalManager({ activeTaskIds, currentTaskId, cwd }, ref) {
     const terminalRefs = useRef<Map<string, TerminalHandle>>(new Map());
 
     const closeAll = useCallback(() => {
@@ -60,6 +61,7 @@ export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManager
             }}
             visible={taskId === currentTaskId}
             sessionId={taskId}
+            cwd={cwd}
           />
         ))}
       </>

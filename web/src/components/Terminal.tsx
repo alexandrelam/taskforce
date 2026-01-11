@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
+import { useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 
-const API_BASE = "http://localhost:3000";
 const WS_BASE = "ws://localhost:3000";
 
 export interface TerminalHandle {
@@ -13,18 +12,17 @@ export interface TerminalHandle {
 interface TerminalProps {
   visible?: boolean;
   sessionId?: string;
+  cwd?: string;
 }
 
 export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Terminal(
-  { visible = true, sessionId },
+  { visible = true, sessionId, cwd },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const [projectPath, setProjectPath] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useImperativeHandle(ref, () => ({
     close: () => {
@@ -36,15 +34,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   }));
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/settings/project_path`)
-      .then((res) => res.json())
-      .then((data) => setProjectPath(data.value))
-      .catch(() => setProjectPath(null))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    if (loading || !containerRef.current) return;
+    if (!containerRef.current) return;
 
     const term = new XTerm({
       cursorBlink: true,
@@ -66,8 +56,8 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     fitAddonRef.current = fitAddon;
 
     const params = new URLSearchParams();
-    if (projectPath) {
-      params.set("cwd", projectPath);
+    if (cwd) {
+      params.set("cwd", cwd);
     }
     if (sessionId) {
       params.set("sessionId", sessionId);
@@ -116,7 +106,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       ws.close();
       term.dispose();
     };
-  }, [loading, projectPath]);
+  }, [cwd, sessionId]);
 
   // Refit terminal when visibility changes
   useEffect(() => {
@@ -128,17 +118,6 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       return () => clearTimeout(timeout);
     }
   }, [visible]);
-
-  if (loading) {
-    return (
-      <div
-        className="h-full w-full min-h-[300px] bg-[#1a1a1a] rounded-md flex items-center justify-center text-white"
-        style={{ display: visible ? "flex" : "none" }}
-      >
-        Loading...
-      </div>
-    );
-  }
 
   return (
     <div

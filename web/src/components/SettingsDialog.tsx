@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, Terminal as TerminalIcon } from "lucide-react";
+import { Settings, FolderKanban, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,31 +29,59 @@ import {
 
 const API_BASE = "http://localhost:3000";
 
-const navItems = [{ name: "Terminal", icon: TerminalIcon }];
+interface Project {
+  id: string;
+  name: string;
+  path: string;
+  createdAt: number;
+}
 
-export function SettingsDialog() {
+const navItems = [{ name: "Projects", icon: FolderKanban }];
+
+interface SettingsDialogProps {
+  onProjectsChange?: () => void;
+}
+
+export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
-  const [projectPath, setProjectPath] = useState("");
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectPath, setNewProjectPath] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const fetchProjects = async () => {
+    const res = await fetch(`${API_BASE}/api/projects`);
+    const data = await res.json();
+    setProjects(data);
+  };
 
   useEffect(() => {
     if (open) {
-      fetch(`${API_BASE}/api/settings/project_path`)
-        .then((res) => res.json())
-        .then((data) => setProjectPath(data.value || ""))
-        .catch(() => {});
+      fetchProjects();
     }
   }, [open]);
 
-  const handleSave = async () => {
+  const handleCreateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProjectName.trim() || !newProjectPath.trim()) return;
+
     setSaving(true);
-    await fetch(`${API_BASE}/api/settings/project_path`, {
-      method: "PUT",
+    await fetch(`${API_BASE}/api/projects`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ value: projectPath }),
+      body: JSON.stringify({ name: newProjectName.trim(), path: newProjectPath.trim() }),
     });
+    setNewProjectName("");
+    setNewProjectPath("");
     setSaving(false);
-    setOpen(false);
+    await fetchProjects();
+    onProjectsChange?.();
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    await fetch(`${API_BASE}/api/projects/${id}`, { method: "DELETE" });
+    await fetchProjects();
+    onProjectsChange?.();
   };
 
   return (
@@ -94,29 +122,64 @@ export function SettingsDialog() {
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem>
-                    <BreadcrumbPage>Terminal</BreadcrumbPage>
+                    <BreadcrumbPage>Projects</BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
             </header>
-            <div className="flex flex-1 flex-col gap-6 p-6">
-              <div className="space-y-2">
-                <Label htmlFor="project-path">Project Path</Label>
-                <Input
-                  id="project-path"
-                  placeholder="/path/to/your/project"
-                  value={projectPath}
-                  onChange={(e) => setProjectPath(e.target.value)}
-                />
-                <p className="text-sm text-muted-foreground">
-                  The terminal will open in this directory when launched.
-                </p>
+            <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
+              <div className="space-y-4">
+                <Label>Existing Projects</Label>
+                {projects.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No projects yet. Create one below.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {projects.map((project) => (
+                      <div
+                        key={project.id}
+                        className="flex items-center justify-between rounded-md border p-3"
+                      >
+                        <div>
+                          <div className="font-medium">{project.name}</div>
+                          <div className="text-sm text-muted-foreground">{project.path}</div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteProject(project.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={saving}>
-                  {saving ? "Saving..." : "Save"}
-                </Button>
-              </div>
+              <form onSubmit={handleCreateProject} className="space-y-4 border-t pt-4">
+                <Label>Add New Project</Label>
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Project name"
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="/path/to/your/project"
+                    value={newProjectPath}
+                    onChange={(e) => setNewProjectPath(e.target.value)}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={saving || !newProjectName.trim() || !newProjectPath.trim()}
+                  >
+                    {saving ? "Creating..." : "Create Project"}
+                  </Button>
+                </div>
+              </form>
             </div>
           </main>
         </SidebarProvider>

@@ -24,12 +24,20 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { ChevronDown } from "lucide-react";
 
 const API_BASE = "http://localhost:3000";
 
 interface Task {
   id: string;
   title: string;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  path: string;
+  createdAt: number;
 }
 
 type Columns = Record<UniqueIdentifier, Task[]>;
@@ -49,15 +57,50 @@ export function TaskBoard() {
   const terminalManagerRef = useRef<TerminalManagerHandle>(null);
   const previousColumnsRef = useRef<Columns | null>(null);
 
+  // Project state
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+
   // Require 8px movement before drag starts - allows clicks to work
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { distance: 8 } })
   );
 
-  // Fetch tickets on mount
+  // Fetch projects on mount
+  const fetchProjects = useCallback(async () => {
+    const res = await fetch(`${API_BASE}/api/projects`);
+    const data: Project[] = await res.json();
+    setProjects(data);
+    return data;
+  }, []);
+
+  // Load projects and selected project on mount
   useEffect(() => {
-    fetch(`${API_BASE}/api/tickets`)
+    const init = async () => {
+      const projectList = await fetchProjects();
+      // Load selected project from settings
+      const settingsRes = await fetch(`${API_BASE}/api/settings/selected_project`);
+      const settingsData = await settingsRes.json();
+      if (settingsData.value) {
+        const project = projectList.find((p) => p.id === settingsData.value);
+        if (project) {
+          setSelectedProject(project);
+        }
+      }
+    };
+    init();
+  }, [fetchProjects]);
+
+  // Fetch tickets when selected project changes
+  useEffect(() => {
+    if (!selectedProject) {
+      setColumns({ "To Do": [], "In Progress": [], Done: [] });
+      return;
+    }
+
+    fetch(`${API_BASE}/api/tickets?projectId=${selectedProject.id}`)
       .then((res) => res.json())
       .then((tickets: { id: string; title: string; column: string }[]) => {
         const newColumns: Columns = {
@@ -74,7 +117,20 @@ export function TaskBoard() {
         setColumns(newColumns);
       })
       .catch(console.error);
-  }, []);
+  }, [selectedProject]);
+
+  const handleSelectProject = async (project: Project) => {
+    setSelectedProject(project);
+    setProjectDropdownOpen(false);
+    // Close terminal panel when switching projects
+    handleClosePanel();
+    // Persist selection
+    await fetch(`${API_BASE}/api/settings/selected_project`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value: project.id }),
+    });
+  };
 
   const handleCardClick = (task: Task) => {
     setSelectedTask(task);
@@ -91,13 +147,13 @@ export function TaskBoard() {
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTicketTitle.trim()) return;
+    if (!newTicketTitle.trim() || !selectedProject) return;
 
     try {
       const res = await fetch(`${API_BASE}/api/tickets`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTicketTitle.trim() }),
+        body: JSON.stringify({ title: newTicketTitle.trim(), projectId: selectedProject.id }),
       });
       const ticket = await res.json();
       setColumns((prev) => ({
@@ -154,16 +210,53 @@ export function TaskBoard() {
     setColumns(newColumns);
   };
 
+  const handleProjectsChange = () => {
+    fetchProjects();
+  };
+
   return (
     <div className="flex h-screen bg-background text-foreground">
       {/* Kanban Board */}
       <div className="flex-1 p-6 overflow-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Task Board</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold">Task Board</h1>
+            {/* Project Selector */}
+            <div className="relative">
+              <button
+                onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md hover:bg-accent"
+              >
+                {selectedProject ? selectedProject.name : "Select Project"}
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              {projectDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 w-48 bg-popover border rounded-md shadow-lg z-50">
+                  {projects.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      No projects. Create one in Settings.
+                    </div>
+                  ) : (
+                    projects.map((project) => (
+                      <button
+                        key={project.id}
+                        onClick={() => handleSelectProject(project)}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-accent ${
+                          selectedProject?.id === project.id ? "bg-accent" : ""
+                        }`}
+                      >
+                        {project.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" disabled={!selectedProject}>
                   Add Ticket
                 </Button>
               </DialogTrigger>
@@ -184,81 +277,89 @@ export function TaskBoard() {
                 </form>
               </DialogContent>
             </Dialog>
-            <SettingsDialog />
+            <SettingsDialog onProjectsChange={handleProjectsChange} />
           </div>
         </div>
-        <Kanban
-          value={columns}
-          onValueChange={handleColumnsChange}
-          getItemValue={(item) => item.id}
-          sensors={sensors}
-        >
-          <KanbanBoard>
-            {COLUMN_ORDER.map((columnId) => {
-              const tasks = columns[columnId] || [];
-              return (
-                <KanbanColumn key={columnId} value={columnId} className="w-80 shrink-0">
-                  <div className="font-semibold text-muted-foreground mb-2 px-1">
-                    {columnId}
-                    <span className="ml-2 text-zinc-500 text-sm">{tasks.length}</span>
-                  </div>
-                  {tasks.map((task) => (
-                    <KanbanItem
-                      key={task.id}
-                      value={task.id}
-                      asHandle
-                      onClick={() => handleCardClick(task)}
-                      className="group p-3 bg-card rounded-md border border-border hover:border-primary/50 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm">{task.title}</div>
-                        <button
-                          onClick={(e) => handleDeleteTicket(e, task.id)}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-opacity"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M3 6h18" />
-                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                          </svg>
-                        </button>
-                      </div>
-                    </KanbanItem>
-                  ))}
-                </KanbanColumn>
-              );
-            })}
-          </KanbanBoard>
-          <KanbanOverlay>
-            {({ value, variant }) => {
-              if (variant === "column") {
+
+        {!selectedProject ? (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
+            <p className="text-lg mb-2">No project selected</p>
+            <p className="text-sm">Select a project from the dropdown or create one in Settings</p>
+          </div>
+        ) : (
+          <Kanban
+            value={columns}
+            onValueChange={handleColumnsChange}
+            getItemValue={(item) => item.id}
+            sensors={sensors}
+          >
+            <KanbanBoard>
+              {COLUMN_ORDER.map((columnId) => {
+                const tasks = columns[columnId] || [];
                 return (
-                  <div className="w-80 p-3 bg-card rounded-lg border border-border opacity-90">
-                    {value}
+                  <KanbanColumn key={columnId} value={columnId} className="w-80 shrink-0">
+                    <div className="font-semibold text-muted-foreground mb-2 px-1">
+                      {columnId}
+                      <span className="ml-2 text-zinc-500 text-sm">{tasks.length}</span>
+                    </div>
+                    {tasks.map((task) => (
+                      <KanbanItem
+                        key={task.id}
+                        value={task.id}
+                        asHandle
+                        onClick={() => handleCardClick(task)}
+                        className="group p-3 bg-card rounded-md border border-border hover:border-primary/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm">{task.title}</div>
+                          <button
+                            onClick={(e) => handleDeleteTicket(e, task.id)}
+                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-opacity"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M3 6h18" />
+                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                            </svg>
+                          </button>
+                        </div>
+                      </KanbanItem>
+                    ))}
+                  </KanbanColumn>
+                );
+              })}
+            </KanbanBoard>
+            <KanbanOverlay>
+              {({ value, variant }) => {
+                if (variant === "column") {
+                  return (
+                    <div className="w-80 p-3 bg-card rounded-lg border border-border opacity-90">
+                      {value}
+                    </div>
+                  );
+                }
+                const task = Object.values(columns)
+                  .flat()
+                  .find((t) => t.id === value);
+                return (
+                  <div className="p-3 bg-card rounded-md border border-border opacity-90">
+                    {task?.title}
                   </div>
                 );
-              }
-              const task = Object.values(columns)
-                .flat()
-                .find((t) => t.id === value);
-              return (
-                <div className="p-3 bg-card rounded-md border border-border opacity-90">
-                  {task?.title}
-                </div>
-              );
-            }}
-          </KanbanOverlay>
-        </Kanban>
+              }}
+            </KanbanOverlay>
+          </Kanban>
+        )}
       </div>
 
       {/* Terminal Panel */}
@@ -294,6 +395,7 @@ export function TaskBoard() {
               ref={terminalManagerRef}
               activeTaskIds={activeTaskIds}
               currentTaskId={selectedTask.id}
+              cwd={selectedProject?.path}
             />
           </div>
         </div>
