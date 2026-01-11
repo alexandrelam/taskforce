@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, FolderKanban, Trash2, Cog } from "lucide-react";
+import { Settings, FolderKanban, Trash2, Cog, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,12 +29,17 @@ import {
 
 const API_BASE = "http://localhost:3000";
 
+interface Pane {
+  name: string;
+}
+
 interface Project {
   id: string;
   name: string;
   path: string;
   createdAt: number;
   postWorktreeCommand: string | null;
+  panes: Pane[];
 }
 
 type SectionName = "General" | "Projects";
@@ -58,6 +63,8 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
   const [saving, setSaving] = useState(false);
   const [editingCommandId, setEditingCommandId] = useState<string | null>(null);
   const [editingCommandValue, setEditingCommandValue] = useState("");
+  const [newPaneNames, setNewPaneNames] = useState<Record<string, string>>({});
+  const [paneError, setPaneError] = useState<string | null>(null);
 
   const fetchProjects = async () => {
     const res = await fetch(`${API_BASE}/api/projects`);
@@ -72,6 +79,49 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
       body: JSON.stringify({ postWorktreeCommand: command }),
     });
     await fetchProjects();
+  };
+
+  const addPane = async (projectId: string) => {
+    const paneName = newPaneNames[projectId]?.trim();
+    if (!paneName) {
+      setPaneError("Pane name cannot be empty");
+      return;
+    }
+
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    // Check for duplicates (including reserved "claude" name)
+    const existingNames = ["claude", ...project.panes.map((p) => p.name.toLowerCase())];
+    if (existingNames.includes(paneName.toLowerCase())) {
+      setPaneError("Pane name already exists");
+      return;
+    }
+
+    setPaneError(null);
+    const newPanes = [...project.panes, { name: paneName }];
+    await fetch(`${API_BASE}/api/projects/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ panes: newPanes }),
+    });
+    setNewPaneNames((prev) => ({ ...prev, [projectId]: "" }));
+    await fetchProjects();
+    onProjectsChange?.();
+  };
+
+  const removePane = async (projectId: string, paneName: string) => {
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    const newPanes = project.panes.filter((p) => p.name !== paneName);
+    await fetch(`${API_BASE}/api/projects/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ panes: newPanes }),
+    });
+    await fetchProjects();
+    onProjectsChange?.();
   };
 
   useEffect(() => {
@@ -206,6 +256,62 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
                                 }}
                                 className="text-sm"
                               />
+                            </div>
+                            <div className="border-t pt-2 mt-2">
+                              <Label className="text-xs text-muted-foreground">
+                                Terminal Panes
+                              </Label>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                                  claude (default)
+                                </span>
+                                {project.panes.map((pane) => (
+                                  <span
+                                    key={pane.name}
+                                    className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium"
+                                  >
+                                    {pane.name}
+                                    <button
+                                      type="button"
+                                      onClick={() => removePane(project.id, pane.name)}
+                                      className="hover:text-destructive"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                              <div className="flex items-center gap-2 mt-2">
+                                <Input
+                                  placeholder="New pane name"
+                                  value={newPaneNames[project.id] ?? ""}
+                                  onChange={(e) => {
+                                    setPaneError(null);
+                                    setNewPaneNames((prev) => ({
+                                      ...prev,
+                                      [project.id]: e.target.value,
+                                    }));
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      addPane(project.id);
+                                    }
+                                  }}
+                                  className="text-sm h-8"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => addPane(project.id)}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              {paneError && newPaneNames[project.id] !== undefined && (
+                                <p className="text-xs text-destructive mt-1">{paneError}</p>
+                              )}
                             </div>
                           </div>
                         ))}

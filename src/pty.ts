@@ -37,14 +37,33 @@ export function sanitizeSessionId(sessionId: string): string {
   return sessionId.replace(/[.:]/g, "-");
 }
 
-// Kill a tmux session by ticket ID
+// Kill all tmux sessions for a ticket (including pane sessions)
+// Sessions are named {ticketId}-{paneName} (e.g., abc123-claude, abc123-frontend)
 export function killTmuxSession(ticketId: string): void {
   if (!tmuxAvailable) return;
-  const sessionName = sanitizeSessionId(ticketId);
+  const sanitizedId = sanitizeSessionId(ticketId);
+
   try {
-    execSync(`tmux kill-session -t ${sessionName}`, { stdio: "ignore" });
+    // List all sessions and filter those starting with the ticketId prefix
+    const output = execSync("tmux list-sessions -F '#{session_name}'", {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    const sessions = output.trim().split("\n").filter(Boolean);
+
+    for (const session of sessions) {
+      // Match sessions that start with the ticketId (handles both old single-session
+      // format and new {ticketId}-{paneName} format)
+      if (session === sanitizedId || session.startsWith(`${sanitizedId}-`)) {
+        try {
+          execSync(`tmux kill-session -t "${session}"`, { stdio: "ignore" });
+        } catch {
+          // Session may have been killed already - ignore
+        }
+      }
+    }
   } catch {
-    // Session doesn't exist or already killed - ignore
+    // tmux list-sessions fails if no sessions exist - ignore
   }
 }
 

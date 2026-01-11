@@ -1,27 +1,4 @@
-# terminal-persistence Specification
-
-## Purpose
-
-TBD - created by archiving change add-tmux-session-persistence. Update Purpose after archive.
-
-## Requirements
-
-### Requirement: tmux Detection
-
-The system SHALL detect tmux availability at server startup and expose this status.
-
-#### Scenario: tmux is installed
-
-- **WHEN** the server starts
-- **AND** tmux binary is available in PATH
-- **THEN** tmux support is enabled for terminal sessions
-
-#### Scenario: tmux is not installed
-
-- **WHEN** the server starts
-- **AND** tmux binary is not found
-- **THEN** tmux support is disabled
-- **AND** terminal sessions use direct shell spawn (existing behavior)
+## MODIFIED Requirements
 
 ### Requirement: Session Persistence
 
@@ -64,15 +41,6 @@ The system SHALL use tmux to persist terminal sessions when a session ID is prov
 - **THEN** a tmux session is created/attached with that combined name
 - **AND** each pane for a ticket has its own independent session
 
-### Requirement: tmux Status API
-
-The system SHALL provide an API endpoint to query tmux availability.
-
-#### Scenario: Query tmux status
-
-- **WHEN** a client sends `GET /api/tmux/status`
-- **THEN** the response contains `{ "available": boolean }`
-
 ### Requirement: Session Cleanup
 
 The system SHALL delete tmux sessions when their associated ticket is deleted.
@@ -94,6 +62,8 @@ The system SHALL delete tmux sessions when their associated ticket is deleted.
 - **WHEN** a ticket is deleted via `DELETE /api/tickets/:id`
 - **AND** tmux is not available on the system
 - **THEN** the deletion completes without error
+
+## ADDED Requirements
 
 ### Requirement: Multi-Pane Terminal UI
 
