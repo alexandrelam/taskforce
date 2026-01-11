@@ -18,4 +18,5 @@ export const tickets = sqliteTable("tickets", {
   column: text("column").notNull().default("To Do"),
   createdAt: integer("created_at").notNull(),
   projectId: text("project_id"),
+  worktreePath: text("worktree_path"),
 });

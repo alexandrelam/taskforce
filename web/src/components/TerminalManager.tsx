@@ -8,11 +8,12 @@ export interface TerminalManagerHandle {
 interface TerminalManagerProps {
   activeTaskIds: string[];
   currentTaskId: string | null;
-  cwd?: string;
+  defaultCwd?: string;
+  taskCwdMap?: Record<string, string | null | undefined>;
 }
 
 export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManagerProps>(
-  function TerminalManager({ activeTaskIds, currentTaskId, cwd }, ref) {
+  function TerminalManager({ activeTaskIds, currentTaskId, defaultCwd, taskCwdMap }, ref) {
     const terminalRefs = useRef<Map<string, TerminalHandle>>(new Map());
 
     const closeAll = useCallback(() => {
@@ -51,19 +52,23 @@ export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManager
 
     return (
       <>
-        {activeTaskIds.map((taskId) => (
-          <Terminal
-            key={taskId}
-            ref={(handle) => {
-              if (handle) {
-                terminalRefs.current.set(taskId, handle);
-              }
-            }}
-            visible={taskId === currentTaskId}
-            sessionId={taskId}
-            cwd={cwd}
-          />
-        ))}
+        {activeTaskIds.map((taskId) => {
+          // Use task-specific worktree path if available, otherwise fall back to default
+          const taskCwd = taskCwdMap?.[taskId] || defaultCwd;
+          return (
+            <Terminal
+              key={taskId}
+              ref={(handle) => {
+                if (handle) {
+                  terminalRefs.current.set(taskId, handle);
+                }
+              }}
+              visible={taskId === currentTaskId}
+              sessionId={taskId}
+              cwd={taskCwd}
+            />
+          );
+        })}
       </>
     );
   }

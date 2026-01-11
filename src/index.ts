@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { setupPtyWebSocket, tmuxAvailable, killTmuxSession } from "./pty.js";
 import { db } from "./db/index.js";
 import { settings, tickets, projects } from "./db/schema.js";
+import { slugify, createWorktree, removeWorktree } from "./worktree.js";
 
 const app = express();
 app.use(cors());
@@ -56,10 +57,22 @@ app.post("/api/projects", async (req: Request, res: Response) => {
 
 app.delete("/api/projects/:id", async (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
-  // Get all tickets for this project to clean up their tmux sessions
+
+  // Get project path for worktree removal
+  const project = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+  const projectPath = project[0]?.path;
+
+  // Get all tickets for this project to clean up their tmux sessions and worktrees
   const projectTickets = await db.select().from(tickets).where(eq(tickets.projectId, id));
   for (const ticket of projectTickets) {
     killTmuxSession(ticket.id);
+    // Remove worktree if it exists
+    if (ticket.worktreePath && projectPath) {
+      const result = removeWorktree(projectPath, ticket.worktreePath);
+      if (result.error) {
+        console.warn(`Failed to remove worktree for ticket ${ticket.id}: ${result.error}`);
+      }
+    }
   }
   // Cascade delete tickets
   await db.delete(tickets).where(eq(tickets.projectId, id));
@@ -84,14 +97,65 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
   const { title, projectId } = req.body as { title: string; projectId?: string };
   const id = crypto.randomUUID();
   const createdAt = Date.now();
-  await db
-    .insert(tickets)
-    .values({ id, title, column: "To Do", createdAt, projectId: projectId ?? null });
-  res.json({ id, title, column: "To Do", createdAt, projectId: projectId ?? null });
+
+  let worktreePath: string | null = null;
+  let worktreeError: string | null = null;
+
+  // Create worktree if project is specified
+  if (projectId) {
+    const project = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+
+    if (project[0]?.path) {
+      const slug = slugify(title);
+      const result = createWorktree(project[0].path, slug);
+      worktreePath = result.worktreePath;
+      worktreeError = result.error;
+    }
+  }
+
+  await db.insert(tickets).values({
+    id,
+    title,
+    column: "To Do",
+    createdAt,
+    projectId: projectId ?? null,
+    worktreePath,
+  });
+
+  res.json({
+    id,
+    title,
+    column: "To Do",
+    createdAt,
+    projectId: projectId ?? null,
+    worktreePath,
+    worktreeError,
+  });
 });
 
 app.delete("/api/tickets/:id", async (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
+
+  // Get ticket to check for worktree
+  const ticket = await db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
+  const ticketData = ticket[0];
+
+  // Remove worktree if it exists
+  if (ticketData?.worktreePath && ticketData?.projectId) {
+    const project = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, ticketData.projectId))
+      .limit(1);
+
+    if (project[0]?.path) {
+      const result = removeWorktree(project[0].path, ticketData.worktreePath);
+      if (result.error) {
+        console.warn(`Failed to remove worktree: ${result.error}`);
+      }
+    }
+  }
+
   await db.delete(tickets).where(eq(tickets.id, id));
   killTmuxSession(id);
   res.json({ success: true });

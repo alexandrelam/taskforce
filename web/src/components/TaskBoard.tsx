@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
   Kanban,
   KanbanBoard,
@@ -25,12 +25,14 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { ChevronDown } from "lucide-react";
+import { toast } from "sonner";
 
 const API_BASE = "http://localhost:3000";
 
 interface Task {
   id: string;
   title: string;
+  worktreePath?: string | null;
 }
 
 interface Project {
@@ -102,20 +104,24 @@ export function TaskBoard() {
 
     fetch(`${API_BASE}/api/tickets?projectId=${selectedProject.id}`)
       .then((res) => res.json())
-      .then((tickets: { id: string; title: string; column: string }[]) => {
-        const newColumns: Columns = {
-          "To Do": [],
-          "In Progress": [],
-          Done: [],
-        };
-        tickets.forEach((ticket) => {
-          const col = newColumns[ticket.column];
-          if (col) {
-            col.push({ id: ticket.id, title: ticket.title });
-          }
-        });
-        setColumns(newColumns);
-      })
+      .then(
+        (
+          tickets: { id: string; title: string; column: string; worktreePath?: string | null }[]
+        ) => {
+          const newColumns: Columns = {
+            "To Do": [],
+            "In Progress": [],
+            Done: [],
+          };
+          tickets.forEach((ticket) => {
+            const col = newColumns[ticket.column];
+            if (col) {
+              col.push({ id: ticket.id, title: ticket.title, worktreePath: ticket.worktreePath });
+            }
+          });
+          setColumns(newColumns);
+        }
+      )
       .catch(console.error);
   }, [selectedProject]);
 
@@ -158,10 +164,20 @@ export function TaskBoard() {
       const ticket = await res.json();
       setColumns((prev) => ({
         ...prev,
-        "To Do": [...prev["To Do"], { id: ticket.id, title: ticket.title }],
+        "To Do": [
+          ...prev["To Do"],
+          { id: ticket.id, title: ticket.title, worktreePath: ticket.worktreePath },
+        ],
       }));
       setNewTicketTitle("");
       setDialogOpen(false);
+
+      // Show error if worktree creation failed
+      if (ticket.worktreeError) {
+        toast.error("Failed to create git worktree", {
+          description: ticket.worktreeError,
+        });
+      }
     } catch (error) {
       console.error("Failed to create ticket:", error);
     }
@@ -213,6 +229,19 @@ export function TaskBoard() {
   const handleProjectsChange = () => {
     fetchProjects();
   };
+
+  // Build a map of task IDs to their worktree paths for terminal cwd
+  const taskCwdMap = useMemo(() => {
+    const map: Record<string, string | null | undefined> = {};
+    Object.values(columns)
+      .flat()
+      .forEach((task) => {
+        if (task.worktreePath) {
+          map[task.id] = task.worktreePath;
+        }
+      });
+    return map;
+  }, [columns]);
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -395,7 +424,8 @@ export function TaskBoard() {
               ref={terminalManagerRef}
               activeTaskIds={activeTaskIds}
               currentTaskId={selectedTask.id}
-              cwd={selectedProject?.path}
+              defaultCwd={selectedProject?.path}
+              taskCwdMap={taskCwdMap}
             />
           </div>
         </div>
