@@ -36,34 +36,33 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Catppuccin Latte (light) theme
     const term = new XTerm({
       cursorBlink: true,
       fontSize: 14,
       fontFamily: "Menlo, Monaco, 'Courier New', monospace",
       theme: {
-        background: "#eff1f5",
-        foreground: "#4c4f69",
-        cursor: "#dc8a78",
-        cursorAccent: "#eff1f5",
-        selectionBackground: "#acb0be",
-        selectionForeground: "#4c4f69",
-        black: "#5c5f77",
-        red: "#d20f39",
-        green: "#40a02b",
-        yellow: "#df8e1d",
-        blue: "#1e66f5",
-        magenta: "#8839ef",
-        cyan: "#179299",
-        white: "#acb0be",
-        brightBlack: "#6c6f85",
-        brightRed: "#d20f39",
-        brightGreen: "#40a02b",
-        brightYellow: "#df8e1d",
-        brightBlue: "#1e66f5",
-        brightMagenta: "#8839ef",
-        brightCyan: "#179299",
-        brightWhite: "#4c4f69",
+        background: "#1e1e2e",
+        foreground: "#cdd6f4",
+        cursor: "#f5e0dc",
+        cursorAccent: "#1e1e2e",
+        selectionBackground: "#585b70",
+        selectionForeground: "#cdd6f4",
+        black: "#45475a",
+        red: "#f38ba8",
+        green: "#a6e3a1",
+        yellow: "#f9e2af",
+        blue: "#89b4fa",
+        magenta: "#f5c2e7",
+        cyan: "#94e2d5",
+        white: "#bac2de",
+        brightBlack: "#585b70",
+        brightRed: "#f38ba8",
+        brightGreen: "#a6e3a1",
+        brightYellow: "#f9e2af",
+        brightBlue: "#89b4fa",
+        brightMagenta: "#f5c2e7",
+        brightCyan: "#94e2d5",
+        brightWhite: "#cdd6f4",
       },
     });
 
@@ -142,7 +141,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   return (
     <div
       ref={containerRef}
-      className="h-full w-full min-h-[300px] bg-[#eff1f5] rounded-lg border border-border overflow-hidden"
+      className="h-full w-full min-h-[300px] bg-[#1e1e2e] rounded-md overflow-hidden"
       style={{ display: visible ? "block" : "none" }}
     />
   );

@@ -327,11 +327,9 @@ export function TaskBoard() {
                 const tasks = columns[columnId] || [];
                 return (
                   <KanbanColumn key={columnId} value={columnId} className="w-80 shrink-0">
-                    <div className="font-semibold text-foreground mb-2 px-1">
+                    <div className="font-semibold text-muted-foreground mb-2 px-1">
                       {columnId}
-                      <span className="ml-2 text-muted-foreground text-sm font-normal">
-                        {tasks.length}
-                      </span>
+                      <span className="ml-2 text-zinc-500 text-sm">{tasks.length}</span>
                     </div>
                     {tasks.map((task) => (
                       <KanbanItem
@@ -339,7 +337,7 @@ export function TaskBoard() {
                         value={task.id}
                         asHandle
                         onClick={() => handleCardClick(task)}
-                        className="group p-3 bg-card rounded-lg border border-border hover:border-primary/50 hover:shadow-sm transition-all"
+                        className="group p-3 bg-card rounded-md border border-border hover:border-primary/50 transition-colors"
                       >
                         <div className="flex items-center justify-between">
                           <div className="text-sm">{task.title}</div>
@@ -374,7 +372,7 @@ export function TaskBoard() {
               {({ value, variant }) => {
                 if (variant === "column") {
                   return (
-                    <div className="w-80 p-3 bg-card rounded-lg border border-border shadow-lg">
+                    <div className="w-80 p-3 bg-card rounded-lg border border-border opacity-90">
                       {value}
                     </div>
                   );
@@ -383,7 +381,7 @@ export function TaskBoard() {
                   .flat()
                   .find((t) => t.id === value);
                 return (
-                  <div className="p-3 bg-card rounded-lg border border-border shadow-lg">
+                  <div className="p-3 bg-card rounded-md border border-border opacity-90">
                     {task?.title}
                   </div>
                 );
