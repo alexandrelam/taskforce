@@ -512,7 +512,7 @@ app.post("/api/tickets/track/stop", async (req: Request, res: Response) => {
 app.use(express.static(path.join(__dirname, "../web/dist")));
 
 // SPA fallback - serve index.html for all non-API routes
-app.get("*", (req: Request, res: Response) => {
+app.get("/{*splat}", (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, "../web/dist/index.html"));
 });
 
