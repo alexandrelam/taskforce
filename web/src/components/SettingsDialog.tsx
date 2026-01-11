@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, FolderKanban, Trash2 } from "lucide-react";
+import { Settings, FolderKanban, Trash2, Cog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,7 +36,12 @@ interface Project {
   createdAt: number;
 }
 
-const navItems = [{ name: "Projects", icon: FolderKanban }];
+type SectionName = "General" | "Projects";
+
+const navItems: { name: SectionName; icon: typeof Cog }[] = [
+  { name: "General", icon: Cog },
+  { name: "Projects", icon: FolderKanban },
+];
 
 interface SettingsDialogProps {
   onProjectsChange?: () => void;
@@ -44,10 +49,13 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<SectionName>("General");
   const [projects, setProjects] = useState<Project[]>([]);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectPath, setNewProjectPath] = useState("");
   const [saving, setSaving] = useState(false);
+  const [postWorktreeCommand, setPostWorktreeCommand] = useState("");
+  const [savingCommand, setSavingCommand] = useState(false);
 
   const fetchProjects = async () => {
     const res = await fetch(`${API_BASE}/api/projects`);
@@ -55,9 +63,26 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
     setProjects(data);
   };
 
+  const fetchPostWorktreeCommand = async () => {
+    const res = await fetch(`${API_BASE}/api/settings/worktree_post_command`);
+    const data = await res.json();
+    setPostWorktreeCommand(data.value ?? "");
+  };
+
+  const savePostWorktreeCommand = async () => {
+    setSavingCommand(true);
+    await fetch(`${API_BASE}/api/settings/worktree_post_command`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value: postWorktreeCommand }),
+    });
+    setSavingCommand(false);
+  };
+
   useEffect(() => {
     if (open) {
       fetchProjects();
+      fetchPostWorktreeCommand();
     }
   }, [open]);
 
@@ -104,11 +129,12 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
                   <SidebarMenu>
                     {navItems.map((item) => (
                       <SidebarMenuItem key={item.name}>
-                        <SidebarMenuButton asChild isActive>
-                          <a href="#">
-                            <item.icon />
-                            <span>{item.name}</span>
-                          </a>
+                        <SidebarMenuButton
+                          isActive={activeSection === item.name}
+                          onClick={() => setActiveSection(item.name)}
+                        >
+                          <item.icon />
+                          <span>{item.name}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ))}
@@ -122,64 +148,90 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem>
-                    <BreadcrumbPage>Projects</BreadcrumbPage>
+                    <BreadcrumbPage>{activeSection}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
             </header>
             <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
-              <div className="space-y-4">
-                <Label>Existing Projects</Label>
-                {projects.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No projects yet. Create one below.
-                  </p>
-                ) : (
+              {activeSection === "General" && (
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    {projects.map((project) => (
-                      <div
-                        key={project.id}
-                        className="flex items-center justify-between rounded-md border p-3"
-                      >
-                        <div>
-                          <div className="font-medium">{project.name}</div>
-                          <div className="text-sm text-muted-foreground">{project.path}</div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteProject(project.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
+                    <Label htmlFor="post-worktree-command">Post-worktree command</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Command to run after creating a git worktree for a new ticket (e.g., "npm i",
+                      "bundle install")
+                    </p>
+                    <Input
+                      id="post-worktree-command"
+                      placeholder="npm i"
+                      value={postWorktreeCommand}
+                      onChange={(e) => setPostWorktreeCommand(e.target.value)}
+                    />
                   </div>
-                )}
-              </div>
-              <form onSubmit={handleCreateProject} className="space-y-4 border-t pt-4">
-                <Label>Add New Project</Label>
-                <div className="space-y-2">
-                  <Input
-                    placeholder="Project name"
-                    value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
-                  />
-                  <Input
-                    placeholder="/path/to/your/project"
-                    value={newProjectPath}
-                    onChange={(e) => setNewProjectPath(e.target.value)}
-                  />
+                  <div className="flex justify-end">
+                    <Button onClick={savePostWorktreeCommand} disabled={savingCommand}>
+                      {savingCommand ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex justify-end">
-                  <Button
-                    type="submit"
-                    disabled={saving || !newProjectName.trim() || !newProjectPath.trim()}
-                  >
-                    {saving ? "Creating..." : "Create Project"}
-                  </Button>
-                </div>
-              </form>
+              )}
+              {activeSection === "Projects" && (
+                <>
+                  <div className="space-y-4">
+                    <Label>Existing Projects</Label>
+                    {projects.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No projects yet. Create one below.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {projects.map((project) => (
+                          <div
+                            key={project.id}
+                            className="flex items-center justify-between rounded-md border p-3"
+                          >
+                            <div>
+                              <div className="font-medium">{project.name}</div>
+                              <div className="text-sm text-muted-foreground">{project.path}</div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteProject(project.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <form onSubmit={handleCreateProject} className="space-y-4 border-t pt-4">
+                    <Label>Add New Project</Label>
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Project name"
+                        value={newProjectName}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                      />
+                      <Input
+                        placeholder="/path/to/your/project"
+                        value={newProjectPath}
+                        onChange={(e) => setNewProjectPath(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        type="submit"
+                        disabled={saving || !newProjectName.trim() || !newProjectPath.trim()}
+                      >
+                        {saving ? "Creating..." : "Create Project"}
+                      </Button>
+                    </div>
+                  </form>
+                </>
+              )}
             </div>
           </main>
         </SidebarProvider>

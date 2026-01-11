@@ -92,6 +92,36 @@ export function createWorktree(projectPath: string, ticketSlug: string): Worktre
   }
 }
 
+interface PostCommandResult {
+  output: string | null;
+  error: string | null;
+}
+
+/**
+ * Run a command in a worktree directory after creation
+ * @param cwd - The worktree directory to run the command in
+ * @param command - The shell command to execute
+ * @returns Output and error information
+ */
+export function runPostWorktreeCommand(cwd: string, command: string): PostCommandResult {
+  if (!command.trim()) {
+    return { output: null, error: null };
+  }
+
+  try {
+    const output = execSync(command, {
+      cwd,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 300000, // 5 minute timeout for long commands like npm i
+    });
+    return { output: output.trim(), error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { output: null, error: message };
+  }
+}
+
 /**
  * Remove a git worktree
  * @param projectPath - The path to the main project (git repo)

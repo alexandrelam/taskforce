@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { setupPtyWebSocket, tmuxAvailable, killTmuxSession } from "./pty.js";
 import { db } from "./db/index.js";
 import { settings, tickets, projects } from "./db/schema.js";
-import { slugify, createWorktree, removeWorktree } from "./worktree.js";
+import { slugify, createWorktree, removeWorktree, runPostWorktreeCommand } from "./worktree.js";
 
 const app = express();
 app.use(cors());
@@ -100,6 +100,8 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
 
   let worktreePath: string | null = null;
   let worktreeError: string | null = null;
+  let postCommandOutput: string | null = null;
+  let postCommandError: string | null = null;
 
   // Create worktree if project is specified
   if (projectId) {
@@ -110,6 +112,22 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
       const result = createWorktree(project[0].path, slug);
       worktreePath = result.worktreePath;
       worktreeError = result.error;
+
+      // Run post-worktree command if worktree was created successfully
+      if (worktreePath) {
+        const commandSetting = await db
+          .select()
+          .from(settings)
+          .where(eq(settings.key, "worktree_post_command"))
+          .limit(1);
+        const command = commandSetting[0]?.value;
+
+        if (command) {
+          const cmdResult = runPostWorktreeCommand(worktreePath, command);
+          postCommandOutput = cmdResult.output;
+          postCommandError = cmdResult.error;
+        }
+      }
     }
   }
 
@@ -130,6 +148,8 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
     projectId: projectId ?? null,
     worktreePath,
     worktreeError,
+    postCommandOutput,
+    postCommandError,
   });
 });
 
