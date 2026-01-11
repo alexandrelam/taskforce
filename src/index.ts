@@ -282,7 +282,11 @@ async function runTicketSetup(
 }
 
 app.post("/api/tickets", async (req: Request, res: Response) => {
-  const { title, projectId } = req.body as { title: string; projectId?: string };
+  const { title, projectId, description } = req.body as {
+    title: string;
+    projectId?: string;
+    description?: string;
+  };
   const id = crypto.randomUUID();
   const createdAt = Date.now();
 
@@ -314,6 +318,7 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
     setupStatus: needsSetup ? "pending" : "ready",
     setupError: null,
     setupLogs: null,
+    description: description ?? null,
   });
 
   // Return immediately
@@ -326,6 +331,7 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
     worktreePath: null,
     isMain: false,
     setupStatus: needsSetup ? "pending" : "ready",
+    description: description ?? null,
   });
 
   // Run setup in background (fire and forget)
@@ -372,8 +378,8 @@ app.delete("/api/tickets/:id", async (req: Request<{ id: string }>, res: Respons
 
 app.patch("/api/tickets/:id", async (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
-  const { column } = req.body as { column: string };
-  console.log(`[PATCH /api/tickets/:id] Request to update ticket '${id}' to column '${column}'`);
+  const { column, description } = req.body as { column?: string; description?: string };
+  console.log(`[PATCH /api/tickets/:id] Request to update ticket '${id}'`);
 
   // Get current ticket state before update
   const existing = await db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
@@ -386,10 +392,12 @@ app.patch("/api/tickets/:id", async (req: Request<{ id: string }>, res: Response
     `[PATCH /api/tickets/:id] Current ticket state: { id: '${existing[0].id}', title: '${existing[0].title}', column: '${existing[0].column}' }`
   );
 
-  await db.update(tickets).set({ column }).where(eq(tickets.id, id));
-  console.log(
-    `[PATCH /api/tickets/:id] Successfully updated ticket '${id}' from '${existing[0].column}' to '${column}'`
-  );
+  const updateData: { column?: string; description?: string } = {};
+  if (column !== undefined) updateData.column = column;
+  if (description !== undefined) updateData.description = description;
+
+  await db.update(tickets).set(updateData).where(eq(tickets.id, id));
+  console.log(`[PATCH /api/tickets/:id] Successfully updated ticket '${id}'`);
   res.json({ success: true });
 });
 

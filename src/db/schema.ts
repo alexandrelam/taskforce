@@ -26,4 +26,5 @@ export const tickets = sqliteTable("tickets", {
   setupStatus: text("setup_status").notNull().default("ready"),
   setupError: text("setup_error"),
   setupLogs: text("setup_logs"),
+  description: text("description"),
 });
