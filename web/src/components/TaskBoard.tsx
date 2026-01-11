@@ -119,7 +119,7 @@ export function TaskBoard() {
     init();
   }, [fetchProjects]);
 
-  // Fetch tickets and commit info when selected project changes
+  // Fetch tickets when selected project changes, with polling
   useEffect(() => {
     if (!selectedProject) {
       setColumns({ "To Do": [], "In Progress": [], Done: [] });
@@ -127,30 +127,41 @@ export function TaskBoard() {
       return;
     }
 
-    fetch(`${API_BASE}/api/tickets?projectId=${selectedProject.id}`)
-      .then((res) => res.json())
-      .then(
-        (
-          tickets: { id: string; title: string; column: string; worktreePath?: string | null }[]
-        ) => {
-          const newColumns: Columns = {
-            "To Do": [],
-            "In Progress": [],
-            Done: [],
-          };
-          tickets.forEach((ticket) => {
-            const col = newColumns[ticket.column];
-            if (col) {
-              col.push({ id: ticket.id, title: ticket.title, worktreePath: ticket.worktreePath });
-            }
-          });
-          setColumns(newColumns);
-        }
-      )
-      .catch(console.error);
+    const fetchTickets = () => {
+      fetch(`${API_BASE}/api/tickets?projectId=${selectedProject.id}`)
+        .then((res) => res.json())
+        .then(
+          (
+            tickets: { id: string; title: string; column: string; worktreePath?: string | null }[]
+          ) => {
+            const newColumns: Columns = {
+              "To Do": [],
+              "In Progress": [],
+              Done: [],
+            };
+            tickets.forEach((ticket) => {
+              const col = newColumns[ticket.column];
+              if (col) {
+                col.push({ id: ticket.id, title: ticket.title, worktreePath: ticket.worktreePath });
+              }
+            });
+            setColumns(newColumns);
+          }
+        )
+        .catch(console.error);
+    };
+
+    // Initial fetch
+    fetchTickets();
 
     // Fetch commit info
     fetchCommitInfo(selectedProject.id);
+
+    // Poll every 2 seconds for updates
+    const intervalId = setInterval(fetchTickets, 2000);
+
+    // Cleanup on unmount or project change
+    return () => clearInterval(intervalId);
   }, [selectedProject, fetchCommitInfo]);
 
   const handleSelectProject = async (project: Project) => {
