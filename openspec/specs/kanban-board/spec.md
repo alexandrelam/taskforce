@@ -8,13 +8,14 @@ TBD - created by archiving change add-kanban-terminal. Update Purpose after arch
 
 ### Requirement: Kanban Board Display
 
-The system SHALL display a Kanban board with draggable columns and cards, loading tickets from the database.
+The system SHALL display a Kanban board with draggable columns and cards, loading tickets from the database filtered by the selected project.
 
 #### Scenario: Board renders with columns
 
 - **WHEN** the user navigates to the main view
+- **AND** a project is selected
 - **THEN** a Kanban board is displayed with columns: "To Do", "In Progress", "Done"
-- **AND** tickets are loaded from the database API
+- **AND** tickets are loaded from the database API filtered by project
 
 #### Scenario: Cards are draggable
 
@@ -26,6 +27,11 @@ The system SHALL display a Kanban board with draggable columns and cards, loadin
 
 - **WHEN** the user opens the app for the first time
 - **THEN** the board displays with empty columns (no default tickets)
+
+#### Scenario: No project selected
+
+- **WHEN** the user has not selected a project
+- **THEN** the board displays an empty state prompting the user to create or select a project
 
 ### Requirement: Terminal Card Interaction
 
@@ -81,7 +87,7 @@ The backend SHALL provide a WebSocket endpoint that spawns and manages PTY sessi
 
 ### Requirement: Ticket Creation
 
-The system SHALL allow users to create new tickets via the UI.
+The system SHALL allow users to create new tickets via the UI, associated with the current project.
 
 #### Scenario: Create ticket button
 
@@ -91,16 +97,16 @@ The system SHALL allow users to create new tickets via the UI.
 #### Scenario: Submit new ticket
 
 - **WHEN** the user enters a title and submits the form
-- **THEN** a new ticket is created in the "To Do" column
+- **AND** a project is selected
+- **THEN** a new ticket is created in the "To Do" column linked to the current project
 - **AND** the ticket is persisted to the database
 - **AND** the board updates to show the new ticket
 
 #### Scenario: Terminal opens with project directory
 
-- **WHEN** a ticket is created
-- **AND** a project path is configured in settings
+- **WHEN** a ticket is created for a project
 - **AND** the user opens the terminal for that ticket
-- **THEN** the terminal automatically runs `cd <project_path>` to navigate to the configured directory
+- **THEN** the terminal automatically runs `cd <project_path>` to navigate to the project's configured directory
 
 ### Requirement: Ticket Deletion
 
@@ -119,17 +125,18 @@ The system SHALL allow users to delete tickets via the UI.
 
 ### Requirement: Tickets API
 
-The system SHALL provide REST API endpoints for ticket CRUD operations.
+The system SHALL provide REST API endpoints for ticket CRUD operations with project filtering.
 
 #### Scenario: List tickets
 
-- **WHEN** a client sends `GET /api/tickets`
-- **THEN** the response contains an array of all tickets with id, title, column, createdAt
+- **WHEN** a client sends `GET /api/tickets?projectId=<id>`
+- **THEN** the response contains an array of tickets filtered by project
 
 #### Scenario: Create ticket
 
-- **WHEN** a client sends `POST /api/tickets` with JSON body `{ title: string }`
+- **WHEN** a client sends `POST /api/tickets` with JSON body `{ title: string, projectId: string }`
 - **THEN** a new ticket is created with a generated UUID and default column "To Do"
+- **AND** the ticket is linked to the specified project
 - **AND** the response contains the created ticket
 
 #### Scenario: Delete ticket

@@ -37,31 +37,28 @@ The system SHALL provide REST API endpoints to read and write settings.
 
 ### Requirement: Settings Dialog
 
-The system SHALL provide a settings dialog accessible from the UI with a sidebar navigation pattern.
+The system SHALL provide a settings dialog accessible from the UI with a sidebar navigation pattern, including project management.
 
 #### Scenario: Open settings dialog
 
 - **WHEN** the user clicks the settings button
 - **THEN** a modal dialog opens with a sidebar showing settings categories
 
-#### Scenario: Configure project path
+#### Scenario: Projects settings section
 
-- **WHEN** the user is in the Terminal settings section
-- **THEN** they can enter a project directory path
-- **AND** save it to persist the setting
+- **WHEN** the user is in the Projects settings section
+- **THEN** they see a list of existing projects with name and path
+- **AND** they can add new projects via a form
+- **AND** they can delete existing projects
 
-### Requirement: Terminal Directory Configuration
+#### Scenario: Create project in settings
 
-The system SHALL use the configured project path as the working directory when spawning terminal sessions.
+- **WHEN** the user fills in project name and path and clicks save
+- **THEN** a new project is created in the database
+- **AND** the projects list updates to show the new project
 
-#### Scenario: Terminal uses project path
+#### Scenario: Delete project in settings
 
-- **WHEN** a terminal session is opened
-- **AND** a project path is configured
-- **THEN** the PTY process spawns with `cwd` set to the configured path
-
-#### Scenario: Terminal fallback to home
-
-- **WHEN** a terminal session is opened
-- **AND** no project path is configured or the path is invalid
-- **THEN** the PTY process spawns with `cwd` set to the user's home directory
+- **WHEN** the user clicks delete on a project
+- **THEN** the project and all its tickets are deleted
+- **AND** the projects list updates
