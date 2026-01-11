@@ -1,6 +1,17 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" suppressHydrationWarning>
   <head>
+    <script>
+      (function () {
+        const theme = localStorage.getItem("theme");
+        if (
+          theme === "dark" ||
+          (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)
+        ) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <link
       rel="icon"
