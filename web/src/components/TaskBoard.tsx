@@ -18,6 +18,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import {
   type UniqueIdentifier,
@@ -89,6 +99,7 @@ export function TaskBoard() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
+  const [ticketToDelete, setTicketToDelete] = useState<Task | null>(null);
   const terminalManagerRef = useRef<TerminalManagerHandle>(null);
   const previousColumnsRef = useRef<Columns | null>(null);
 
@@ -280,8 +291,15 @@ export function TaskBoard() {
     }
   };
 
-  const handleDeleteTicket = async (e: React.MouseEvent, taskId: string) => {
+  const handleDeleteTicketClick = (e: React.MouseEvent, task: Task) => {
     e.stopPropagation();
+    setTicketToDelete(task);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!ticketToDelete) return;
+
+    const taskId = ticketToDelete.id;
     setDeletingTicketId(taskId);
     try {
       await fetch(`${API_BASE}/api/tickets/${taskId}`, { method: "DELETE" });
@@ -300,6 +318,7 @@ export function TaskBoard() {
       console.error("Failed to delete ticket:", error);
     } finally {
       setDeletingTicketId(null);
+      setTicketToDelete(null);
     }
   };
 
@@ -630,7 +649,7 @@ export function TaskBoard() {
                               )}
                               {!task.isMain && (
                                 <button
-                                  onClick={(e) => handleDeleteTicket(e, task.id)}
+                                  onClick={(e) => handleDeleteTicketClick(e, task)}
                                   disabled={deletingTicketId === task.id}
                                   className={`p-1 transition-opacity ${
                                     deletingTicketId === task.id
@@ -827,6 +846,30 @@ export function TaskBoard() {
             </div>
           );
         })()}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!ticketToDelete}
+        onOpenChange={(open) => !open && setTicketToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this ticket?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{ticketToDelete?.title}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
