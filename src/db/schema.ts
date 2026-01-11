@@ -27,4 +27,5 @@ export const tickets = sqliteTable("tickets", {
   setupError: text("setup_error"),
   setupLogs: text("setup_logs"),
   description: text("description"),
+  statusOverride: integer("status_override", { mode: "boolean" }),
 });

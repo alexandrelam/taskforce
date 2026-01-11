@@ -392,14 +392,41 @@ app.patch("/api/tickets/:id", async (req: Request<{ id: string }>, res: Response
     `[PATCH /api/tickets/:id] Current ticket state: { id: '${existing[0].id}', title: '${existing[0].title}', column: '${existing[0].column}' }`
   );
 
-  const updateData: { column?: string; description?: string } = {};
-  if (column !== undefined) updateData.column = column;
+  const updateData: { column?: string; description?: string; statusOverride?: boolean } = {};
+  if (column !== undefined) {
+    updateData.column = column;
+    // Set statusOverride when column changes (manual drag)
+    updateData.statusOverride = true;
+    console.log(`[PATCH /api/tickets/:id] Setting statusOverride=true for manual column change`);
+  }
   if (description !== undefined) updateData.description = description;
 
   await db.update(tickets).set(updateData).where(eq(tickets.id, id));
   console.log(`[PATCH /api/tickets/:id] Successfully updated ticket '${id}'`);
   res.json({ success: true });
 });
+
+// Clear status override endpoint
+app.patch(
+  "/api/tickets/:id/clear-override",
+  async (req: Request<{ id: string }>, res: Response) => {
+    const { id } = req.params;
+    console.log(
+      `[PATCH /api/tickets/:id/clear-override] Request to clear override for ticket '${id}'`
+    );
+
+    const existing = await db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
+    if (!existing[0]) {
+      console.log(`[PATCH /api/tickets/:id/clear-override] Ticket '${id}' not found`);
+      res.status(404).json({ success: false, error: "Ticket not found" });
+      return;
+    }
+
+    await db.update(tickets).set({ statusOverride: false }).where(eq(tickets.id, id));
+    console.log(`[PATCH /api/tickets/:id/clear-override] Cleared override for ticket '${id}'`);
+    res.json({ success: true });
+  }
+);
 
 // Ticket Tracking API (for Claude Code hooks)
 app.post("/api/tickets/track/start", async (req: Request, res: Response) => {
@@ -417,8 +444,19 @@ app.post("/api/tickets/track/start", async (req: Request, res: Response) => {
   }
 
   console.log(
-    `[track/start] Found ticket: { id: '${ticket.id}', title: '${ticket.title}', worktreePath: '${ticket.worktreePath}' }`
+    `[track/start] Found ticket: { id: '${ticket.id}', title: '${ticket.title}', worktreePath: '${ticket.worktreePath}', statusOverride: ${ticket.statusOverride} }`
   );
+
+  // Check if ticket has manual status override
+  if (ticket.statusOverride) {
+    console.log(`[track/start] Ticket '${ticket.id}' has manual status override, skipping update`);
+    res.status(409).json({
+      success: false,
+      error: "Ticket has manual status override",
+      ticketId: ticket.id,
+    });
+    return;
+  }
 
   // Update ticket to In Progress and set lastActivityAt
   await db
@@ -445,8 +483,19 @@ app.post("/api/tickets/track/stop", async (req: Request, res: Response) => {
   }
 
   console.log(
-    `[track/stop] Found ticket: { id: '${ticket.id}', title: '${ticket.title}', worktreePath: '${ticket.worktreePath}' }`
+    `[track/stop] Found ticket: { id: '${ticket.id}', title: '${ticket.title}', worktreePath: '${ticket.worktreePath}', statusOverride: ${ticket.statusOverride} }`
   );
+
+  // Check if ticket has manual status override
+  if (ticket.statusOverride) {
+    console.log(`[track/stop] Ticket '${ticket.id}' has manual status override, skipping update`);
+    res.status(409).json({
+      success: false,
+      error: "Ticket has manual status override",
+      ticketId: ticket.id,
+    });
+    return;
+  }
 
   // Update ticket to To Do and set lastActivityAt
   await db
