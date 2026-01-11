@@ -1,11 +1,21 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
           }
         ]
       }
@@ -15,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
           }
         ]
       }
@@ -25,17 +35,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
           }
         ]
       }
     ],
-    "PermissionRequest": [
+    "Notification": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
           }
         ]
       }

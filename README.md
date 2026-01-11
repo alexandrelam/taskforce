@@ -56,30 +56,66 @@ Open http://localhost:3326 and create your first project in Settings.
 
 ## Claude Code Integration
 
-Add these hooks to your Claude Code config to auto-track ticket progress:
+Add these hooks to your Claude Code config (`.claude/settings.json`) to auto-track ticket progress:
 
 ```json
 {
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "TaskStart",
         "hooks": [
-          "curl -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d '{\"cwd\": \"$CWD\"}'"
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
+          }
         ]
       }
     ],
-    "PostToolUse": [
+    "SessionStart": [
       {
-        "matcher": "TaskStop",
         "hooks": [
-          "curl -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d '{\"cwd\": \"$CWD\"}'"
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
+          }
         ]
       }
     ]
   }
 }
 ```
+
+See [HOOKS.md](HOOKS.md) for detailed configuration options and troubleshooting.
 
 ## Tech Stack
 
