@@ -25,7 +25,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { ChevronDown, Loader2, GitPullRequest, GitBranch, AlertCircle } from "lucide-react";
+import { ChevronDown, Loader2, GitPullRequest, GitBranch, AlertCircle, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 interface CommitInfo {
@@ -46,6 +46,7 @@ interface Task {
   setupError?: string | null;
   setupLogs?: string | null;
   description?: string | null;
+  statusOverride?: boolean | null;
 }
 
 interface Pane {
@@ -158,6 +159,7 @@ export function TaskBoard() {
               setupError?: string | null;
               setupLogs?: string | null;
               description?: string | null;
+              statusOverride?: boolean | null;
             }[]
           ) => {
             const newColumns: Columns = {
@@ -177,6 +179,7 @@ export function TaskBoard() {
                   setupError: ticket.setupError,
                   setupLogs: ticket.setupLogs,
                   description: ticket.description,
+                  statusOverride: ticket.statusOverride,
                 });
               }
             });
@@ -283,6 +286,27 @@ export function TaskBoard() {
       }
     } catch (error) {
       console.error("Failed to delete ticket:", error);
+    }
+  };
+
+  const handleClearOverride = async (e: React.MouseEvent, taskId: string) => {
+    e.stopPropagation();
+    try {
+      await fetch(`${API_BASE}/api/tickets/${taskId}/clear-override`, { method: "PATCH" });
+      setColumns((prev) => {
+        const newColumns: Columns = {};
+        for (const [colId, tasks] of Object.entries(prev)) {
+          newColumns[colId] = tasks.map((t) =>
+            t.id === taskId ? { ...t, statusOverride: false } : t
+          );
+        }
+        return newColumns;
+      });
+      toast.success("Override cleared", {
+        description: "Automatic status tracking re-enabled",
+      });
+    } catch (error) {
+      console.error("Failed to clear override:", error);
     }
   };
 
@@ -502,6 +526,7 @@ export function TaskBoard() {
                         task.setupStatus === "creating_worktree" ||
                         task.setupStatus === "running_post_command";
                       const isSetupFailed = task.setupStatus === "failed";
+                      const hasOverride = task.statusOverride === true;
 
                       const getStatusText = () => {
                         switch (task.setupStatus) {
@@ -525,7 +550,9 @@ export function TaskBoard() {
                           className={`group p-3 bg-card rounded-md border transition-colors ${
                             isSetupFailed
                               ? "border-destructive/50 hover:border-destructive"
-                              : "border-border hover:border-primary/50"
+                              : hasOverride
+                                ? "border-amber-500/50 hover:border-amber-500"
+                                : "border-border hover:border-primary/50"
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -544,28 +571,39 @@ export function TaskBoard() {
                               )}
                               {!task.isMain && task.title}
                             </div>
-                            {!task.isMain && (
-                              <button
-                                onClick={(e) => handleDeleteTicket(e, task.id)}
-                                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-opacity"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
+                            <div className="flex items-center gap-1">
+                              {hasOverride && (
+                                <button
+                                  onClick={(e) => handleClearOverride(e, task.id)}
+                                  className="text-amber-500 hover:text-amber-600 p-1 transition-colors"
+                                  title="Manual status - click to re-enable automatic tracking"
                                 >
-                                  <path d="M3 6h18" />
-                                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                                </svg>
-                              </button>
-                            )}
+                                  <Lock className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              {!task.isMain && (
+                                <button
+                                  onClick={(e) => handleDeleteTicket(e, task.id)}
+                                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-opacity"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M3 6h18" />
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
                           </div>
                           {task.description && (
                             <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
