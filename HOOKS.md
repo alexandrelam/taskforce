@@ -6,9 +6,13 @@ This guide explains how to configure Claude Code hooks to automatically update t
 
 When properly configured, the hooks will:
 
-1. **UserPromptSubmit** - Move ticket to "In Progress" when user submits a prompt (Claude starts working)
-2. **Stop** - Move ticket back to "To Do" when Claude finishes responding (waiting for user input)
-3. **PermissionRequest** - Move ticket back to "To Do" when Claude asks for permission (waiting for user approval)
+1. **PreToolUse** - Move ticket to "In Progress" before Claude uses a tool
+2. **SessionStart** - Move ticket to "In Progress" when a session starts
+3. **UserPromptSubmit** - Move ticket to "In Progress" when user submits a prompt (Claude starts working)
+4. **Stop** - Move ticket back to "To Do" when Claude finishes responding (waiting for user input)
+5. **Notification** - Move ticket back to "To Do" when Claude sends a notification
+
+All hooks run in the background with `&` for non-blocking execution.
 
 ## Prerequisites
 
@@ -27,12 +31,32 @@ Add to `~/.claude/settings.json`:
 ```json
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
           }
         ]
       }
@@ -42,17 +66,17 @@ Add to `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
           }
         ]
       }
     ],
-    "PermissionRequest": [
+    "Notification": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
           }
         ]
       }
@@ -68,12 +92,32 @@ Add to `.claude/settings.json` in your project root:
 ```json
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/start -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
           }
         ]
       }
@@ -83,17 +127,17 @@ Add to `.claude/settings.json` in your project root:
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
           }
         ]
       }
     ],
-    "PermissionRequest": [
+    "Notification": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+            "command": "curl -s -X POST http://localhost:3325/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 &"
           }
         ]
       }
@@ -106,11 +150,13 @@ Add to `.claude/settings.json` in your project root:
 
 1. When you create a ticket in the UI, the system creates a git worktree directory
 2. The worktree path is stored in the database (`worktreePath` column)
-3. When you submit a prompt, the `UserPromptSubmit` hook fires → ticket moves to "In Progress"
-4. The hook sends the current working directory (`$PWD`) to the tracking API
-5. When Claude finishes responding, the `Stop` hook fires → ticket moves back to "To Do"
-6. When Claude asks for permission, the `PermissionRequest` hook fires → ticket moves back to "To Do"
-7. The API matches the path to a ticket and updates its status
+3. When Claude uses a tool, the `PreToolUse` hook fires → ticket moves to "In Progress"
+4. When a session starts, the `SessionStart` hook fires → ticket moves to "In Progress"
+5. When you submit a prompt, the `UserPromptSubmit` hook fires → ticket moves to "In Progress"
+6. The hook sends the current working directory (`$PWD`) to the tracking API
+7. When Claude finishes responding, the `Stop` hook fires → ticket moves back to "To Do"
+8. When Claude sends a notification, the `Notification` hook fires → ticket moves back to "To Do"
+9. The API matches the path to a ticket and updates its status
 
 ## Testing
 
