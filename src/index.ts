@@ -168,6 +168,49 @@ app.patch("/api/tickets/:id", async (req: Request<{ id: string }>, res: Response
   res.json({ success: true });
 });
 
+// Ticket Tracking API (for Claude Code hooks)
+app.post("/api/tickets/track/start", async (req: Request, res: Response) => {
+  const { cwd } = req.body as { cwd: string };
+
+  // Find ticket by worktree path
+  const result = await db.select().from(tickets).where(eq(tickets.worktreePath, cwd)).limit(1);
+  const ticket = result[0];
+
+  if (!ticket) {
+    res.status(404).json({ success: false, error: "No ticket found for this directory" });
+    return;
+  }
+
+  // Update ticket to In Progress and set lastActivityAt
+  await db
+    .update(tickets)
+    .set({ column: "In Progress", lastActivityAt: Date.now() })
+    .where(eq(tickets.id, ticket.id));
+
+  res.json({ success: true, ticketId: ticket.id, title: ticket.title });
+});
+
+app.post("/api/tickets/track/stop", async (req: Request, res: Response) => {
+  const { cwd } = req.body as { cwd: string };
+
+  // Find ticket by worktree path
+  const result = await db.select().from(tickets).where(eq(tickets.worktreePath, cwd)).limit(1);
+  const ticket = result[0];
+
+  if (!ticket) {
+    res.status(404).json({ success: false, error: "No ticket found for this directory" });
+    return;
+  }
+
+  // Update ticket to To Do and set lastActivityAt
+  await db
+    .update(tickets)
+    .set({ column: "To Do", lastActivityAt: Date.now() })
+    .where(eq(tickets.id, ticket.id));
+
+  res.json({ success: true, ticketId: ticket.id, title: ticket.title });
+});
+
 const server = createServer(app);
 setupPtyWebSocket(server);
 

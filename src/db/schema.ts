@@ -19,4 +19,5 @@ export const tickets = sqliteTable("tickets", {
   createdAt: integer("created_at").notNull(),
   projectId: text("project_id"),
   worktreePath: text("worktree_path"),
+  lastActivityAt: integer("last_activity_at"),
 });
