@@ -195,7 +195,23 @@ app.delete("/api/tickets/:id", async (req: Request<{ id: string }>, res: Respons
 app.patch("/api/tickets/:id", async (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
   const { column } = req.body as { column: string };
+  console.log(`[PATCH /api/tickets/:id] Request to update ticket '${id}' to column '${column}'`);
+
+  // Get current ticket state before update
+  const existing = await db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
+  if (!existing[0]) {
+    console.log(`[PATCH /api/tickets/:id] Ticket '${id}' not found`);
+    res.status(404).json({ success: false, error: "Ticket not found" });
+    return;
+  }
+  console.log(
+    `[PATCH /api/tickets/:id] Current ticket state: { id: '${existing[0].id}', title: '${existing[0].title}', column: '${existing[0].column}' }`
+  );
+
   await db.update(tickets).set({ column }).where(eq(tickets.id, id));
+  console.log(
+    `[PATCH /api/tickets/:id] Successfully updated ticket '${id}' from '${existing[0].column}' to '${column}'`
+  );
   res.json({ success: true });
 });
 
