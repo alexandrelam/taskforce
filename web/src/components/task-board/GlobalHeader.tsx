@@ -1,6 +1,8 @@
+import { useRef } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types";
 
@@ -21,6 +23,18 @@ export function GlobalHeader({
   onToggleProject,
   onProjectsChange,
 }: GlobalHeaderProps) {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(
+    dropdownRef,
+    () => {
+      if (projectDropdownOpen) {
+        onProjectDropdownToggle();
+      }
+    },
+    projectDropdownOpen
+  );
+
   const getButtonLabel = () => {
     if (selectedProjects.length === 0) return "Select Projects";
     if (selectedProjects.length === 1) return selectedProjects[0].name;
@@ -32,7 +46,7 @@ export function GlobalHeader({
       <div className="flex items-center gap-4">
         <img src="/taskforce-logo.png" alt="Taskforce" className="h-5" />
         {/* Multi-Select Project Dropdown */}
-        <div className="relative">
+        <div ref={dropdownRef} className="relative">
           <button
             onClick={onProjectDropdownToggle}
             className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md hover:bg-accent"
