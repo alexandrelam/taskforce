@@ -6,8 +6,9 @@ This guide explains how to configure Claude Code hooks to automatically update t
 
 When properly configured, the hooks will:
 
-1. **SessionStart** - Move ticket to "In Progress" when Claude starts working
-2. **Stop** - Move ticket back to "To Do" when Claude finishes (for review)
+1. **UserPromptSubmit** - Move ticket to "In Progress" when user submits a prompt (Claude starts working)
+2. **Stop** - Move ticket back to "To Do" when Claude finishes responding (waiting for user input)
+3. **PermissionRequest** - Move ticket back to "To Do" when Claude asks for permission (waiting for user approval)
 
 ## Prerequisites
 
@@ -26,7 +27,7 @@ Add to `~/.claude/settings.json`:
 ```json
 {
   "hooks": {
-    "SessionStart": [
+    "UserPromptSubmit": [
       {
         "hooks": [
           {
@@ -37,6 +38,16 @@ Add to `~/.claude/settings.json`:
       }
     ],
     "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3000/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
       {
         "hooks": [
           {
@@ -57,7 +68,7 @@ Add to `.claude/settings.json` in your project root:
 ```json
 {
   "hooks": {
-    "SessionStart": [
+    "UserPromptSubmit": [
       {
         "hooks": [
           {
@@ -76,6 +87,16 @@ Add to `.claude/settings.json` in your project root:
           }
         ]
       }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:3000/api/tickets/track/stop -H 'Content-Type: application/json' -d \"{\\\"cwd\\\": \\\"$PWD\\\"}\" > /dev/null 2>&1 || true"
+          }
+        ]
+      }
     ]
   }
 }
@@ -85,9 +106,11 @@ Add to `.claude/settings.json` in your project root:
 
 1. When you create a ticket in the UI, the system creates a git worktree directory
 2. The worktree path is stored in the database (`worktreePath` column)
-3. When Claude starts in that directory, the `SessionStart` hook fires
+3. When you submit a prompt, the `UserPromptSubmit` hook fires → ticket moves to "In Progress"
 4. The hook sends the current working directory (`$PWD`) to the tracking API
-5. The API matches the path to a ticket and updates its status
+5. When Claude finishes responding, the `Stop` hook fires → ticket moves back to "To Do"
+6. When Claude asks for permission, the `PermissionRequest` hook fires → ticket moves back to "To Do"
+7. The API matches the path to a ticket and updates its status
 
 ## Testing
 
