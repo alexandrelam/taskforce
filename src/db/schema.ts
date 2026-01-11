@@ -11,6 +11,7 @@ export const projects = sqliteTable("projects", {
   path: text("path").notNull(),
   createdAt: integer("created_at").notNull(),
   postWorktreeCommand: text("post_worktree_command"),
+  panes: text("panes"),
 });
 
 export const tickets = sqliteTable("tickets", {
