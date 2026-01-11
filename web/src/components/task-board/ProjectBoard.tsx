@@ -108,7 +108,7 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
   };
 
   return (
-    <div className="border rounded-lg p-4 bg-card">
+    <div className="border rounded-lg p-4 pb-6 bg-card">
       {/* Per-Board Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3 min-w-0">
@@ -144,11 +144,11 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
           getItemValue={(item) => item.id}
           sensors={sensors}
         >
-          <KanbanBoard>
+          <KanbanBoard className="items-stretch min-h-[200px]">
             {COLUMN_ORDER.map((columnId) => {
               const tasks = columns[columnId] || [];
               return (
-                <KanbanColumn key={columnId} value={columnId} className="w-72 shrink-0">
+                <KanbanColumn key={columnId} value={columnId} className="w-72 shrink-0 h-auto">
                   <div className="font-semibold text-muted-foreground mb-2 px-1">
                     {columnId}
                     <span className="ml-2 text-zinc-500 text-sm">{tasks.length}</span>
