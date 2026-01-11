@@ -48,7 +48,7 @@ npm run dev
 cd web && npm run dev
 ```
 
-Open http://localhost:5173 and create your first project in Settings.
+Open http://localhost:3326 and create your first project in Settings.
 
 ## Claude Code Integration
 

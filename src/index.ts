@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import { createServer } from "http";
+import path from "path";
 import cors from "cors";
 import { eq } from "drizzle-orm";
 import { execSync } from "child_process";
@@ -13,10 +14,6 @@ app.use(cors());
 const port = process.env.PORT || 3325;
 
 app.use(express.json());
-
-app.get("/", (req: Request, res: Response) => {
-  res.json({ message: "Hello, World!" });
-});
 
 app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok" });
@@ -505,6 +502,14 @@ app.post("/api/tickets/track/stop", async (req: Request, res: Response) => {
 
   console.log(`[track/stop] Updated ticket '${ticket.id}' to "To Do"`);
   res.json({ success: true, ticketId: ticket.id, title: ticket.title });
+});
+
+// Serve static files from web/dist (frontend build)
+app.use(express.static(path.join(__dirname, "../web/dist")));
+
+// SPA fallback - serve index.html for all non-API routes
+app.get("/{*splat}", (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, "../web/dist/index.html"));
 });
 
 const server = createServer(app);
