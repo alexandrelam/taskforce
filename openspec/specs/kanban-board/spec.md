@@ -125,34 +125,31 @@ The system SHALL allow users to delete tickets via the UI.
 
 ### Requirement: Tickets API
 
-The system SHALL provide REST API endpoints for ticket CRUD operations with project filtering and worktree management.
+The system SHALL provide REST API endpoints for ticket CRUD operations with project filtering, worktree management, and post-worktree command execution.
 
-#### Scenario: List tickets
-
-- **WHEN** a client sends `GET /api/tickets?projectId=<id>`
-- **THEN** the response contains an array of tickets filtered by project
-- **AND** each ticket includes `worktreePath` field (null if no worktree)
-
-#### Scenario: Create ticket
+#### Scenario: Create ticket with post-worktree command
 
 - **WHEN** a client sends `POST /api/tickets` with JSON body `{ title: string, projectId: string }`
-- **THEN** a new ticket is created with a generated UUID and default column "To Do"
-- **AND** the ticket is linked to the specified project
-- **AND** a git worktree is created at `<project-parent>/<project-name>-<ticket-slug>`
-- **AND** the response contains the created ticket with `worktreePath` and optional `worktreeError`
+- **AND** a git worktree is successfully created
+- **AND** the `worktree_post_command` setting is configured (non-empty)
+- **THEN** the command is executed in the worktree directory
+- **AND** the response includes `postCommandOutput` (stdout) and `postCommandError` (error message if failed)
 
-#### Scenario: Delete ticket
+#### Scenario: Create ticket without post-worktree command
 
-- **WHEN** a client sends `DELETE /api/tickets/:id`
-- **THEN** the ticket's git worktree is removed (if exists)
-- **AND** the ticket with that ID is deleted from the database
-- **AND** the response confirms success
+- **WHEN** a client sends `POST /api/tickets` with JSON body `{ title: string, projectId: string }`
+- **AND** the `worktree_post_command` setting is empty or not set
+- **THEN** no command is executed after worktree creation
+- **AND** the response does not include `postCommandOutput` or `postCommandError` fields
 
-#### Scenario: Update ticket column
+#### Scenario: Post-worktree command failure
 
-- **WHEN** a client sends `PATCH /api/tickets/:id` with JSON body `{ column: string }`
-- **THEN** the ticket's column is updated in the database
-- **AND** the response confirms success
+- **WHEN** a client sends `POST /api/tickets`
+- **AND** a worktree is created successfully
+- **AND** the post-worktree command fails (non-zero exit code)
+- **THEN** the ticket is still created successfully
+- **AND** the response includes `postCommandError` with the error details
+- **AND** the worktree remains intact (not rolled back)
 
 ### Requirement: Automatic Status Tracking API
 

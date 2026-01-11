@@ -37,28 +37,37 @@ The system SHALL provide REST API endpoints to read and write settings.
 
 ### Requirement: Settings Dialog
 
-The system SHALL provide a settings dialog accessible from the UI with a sidebar navigation pattern, including project management.
+The system SHALL provide a settings dialog accessible from the UI with a sidebar navigation pattern, including project management and general settings.
 
-#### Scenario: Open settings dialog
+#### Scenario: Settings sidebar navigation
 
-- **WHEN** the user clicks the settings button
-- **THEN** a modal dialog opens with a sidebar showing settings categories
+- **WHEN** the user opens the settings dialog
+- **THEN** the sidebar shows categories: "General", "Projects"
+- **AND** clicking a category shows that section's content
 
-#### Scenario: Projects settings section
+### Requirement: General Settings Section
 
-- **WHEN** the user is in the Projects settings section
-- **THEN** they see a list of existing projects with name and path
-- **AND** they can add new projects via a form
-- **AND** they can delete existing projects
+The system SHALL provide a General settings section for configuring application-wide behavior.
 
-#### Scenario: Create project in settings
+#### Scenario: General section in settings dialog
 
-- **WHEN** the user fills in project name and path and clicks save
-- **THEN** a new project is created in the database
-- **AND** the projects list updates to show the new project
+- **WHEN** the user opens the settings dialog
+- **THEN** a "General" section appears in the sidebar navigation
+- **AND** clicking it shows general settings options
 
-#### Scenario: Delete project in settings
+#### Scenario: Post-worktree command setting
 
-- **WHEN** the user clicks delete on a project
-- **THEN** the project and all its tickets are deleted
-- **AND** the projects list updates
+- **WHEN** the user is in the General settings section
+- **THEN** they see an input field labeled "Post-worktree command"
+- **AND** a description explaining it runs after creating a worktree (e.g., "npm i")
+
+#### Scenario: Save post-worktree command
+
+- **WHEN** the user enters a command and the input loses focus or they click save
+- **THEN** the value is stored with key `worktree_post_command` in settings
+- **AND** the UI confirms the setting was saved
+
+#### Scenario: Load existing post-worktree command
+
+- **WHEN** the user opens the General settings section
+- **THEN** the input field displays the current value of `worktree_post_command` (or empty if not set)
