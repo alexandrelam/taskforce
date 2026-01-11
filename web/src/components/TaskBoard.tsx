@@ -61,6 +61,7 @@ export function TaskBoard() {
   const [activeTaskIds, setActiveTaskIds] = useState<string[]>([]);
   const [newTicketTitle, setNewTicketTitle] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const terminalManagerRef = useRef<TerminalManagerHandle>(null);
   const previousColumnsRef = useRef<Columns | null>(null);
 
@@ -192,8 +193,9 @@ export function TaskBoard() {
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTicketTitle.trim() || !selectedProject) return;
+    if (!newTicketTitle.trim() || !selectedProject || isCreating) return;
 
+    setIsCreating(true);
     try {
       const res = await fetch(`${API_BASE}/api/tickets`, {
         method: "POST",
@@ -219,6 +221,8 @@ export function TaskBoard() {
       }
     } catch (error) {
       console.error("Failed to create ticket:", error);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -390,8 +394,15 @@ export function TaskBoard() {
                     onChange={(e) => setNewTicketTitle(e.target.value)}
                     autoFocus
                   />
-                  <Button type="submit" className="w-full">
-                    Create
+                  <Button type="submit" className="w-full" disabled={isCreating}>
+                    {isCreating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create"
+                    )}
                   </Button>
                 </form>
               </DialogContent>
