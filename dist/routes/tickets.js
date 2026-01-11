@@ -179,7 +179,7 @@ router.get("/", async (req, res) => {
     }
 });
 router.post("/", async (req, res) => {
-    const { title, projectId, description } = req.body;
+    const { title, projectId, description, runPostCommand = true } = req.body;
     const id = crypto.randomUUID();
     const createdAt = Date.now();
     // Determine if we need async setup
@@ -224,7 +224,9 @@ router.post("/", async (req, res) => {
     });
     // Run setup in background (fire and forget)
     if (needsSetup && projectPath && slug) {
-        runTicketSetup(id, () => (0, worktree_js_1.createWorktree)(projectPath, slug), postWorktreeCommand).catch((err) => {
+        // Only pass postWorktreeCommand if runPostCommand is true
+        const commandToRun = runPostCommand ? postWorktreeCommand : null;
+        runTicketSetup(id, () => (0, worktree_js_1.createWorktree)(projectPath, slug), commandToRun).catch((err) => {
             console.error(`Background setup failed for ticket ${id}:`, err);
         });
     }

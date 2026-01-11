@@ -9,16 +9,24 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface CreateTicketDialogProps {
   disabled?: boolean;
-  onSubmit: (title: string, description: string) => Promise<void>;
+  hasPostCommand?: boolean;
+  onSubmit: (title: string, description: string, runPostCommand: boolean) => Promise<void>;
 }
 
-export function CreateTicketDialog({ disabled, onSubmit }: CreateTicketDialogProps) {
+export function CreateTicketDialog({
+  disabled,
+  hasPostCommand,
+  onSubmit,
+}: CreateTicketDialogProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [runPostCommand, setRunPostCommand] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,9 +35,10 @@ export function CreateTicketDialog({ disabled, onSubmit }: CreateTicketDialogPro
 
     setIsCreating(true);
     try {
-      await onSubmit(title.trim(), description.trim());
+      await onSubmit(title.trim(), description.trim(), runPostCommand);
       setTitle("");
       setDescription("");
+      setRunPostCommand(true);
       setOpen(false);
     } finally {
       setIsCreating(false);
@@ -60,6 +69,18 @@ export function CreateTicketDialog({ disabled, onSubmit }: CreateTicketDialogPro
             onChange={(e) => setDescription(e.target.value)}
             className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
           />
+          {hasPostCommand && (
+            <div className="flex items-center justify-between">
+              <Label htmlFor="run-post-command" className="text-sm text-muted-foreground">
+                Run post-worktree command
+              </Label>
+              <Switch
+                id="run-post-command"
+                checked={runPostCommand}
+                onCheckedChange={setRunPostCommand}
+              />
+            </div>
+          )}
           <Button type="submit" className="w-full" disabled={isCreating}>
             {isCreating ? (
               <>

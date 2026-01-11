@@ -59,8 +59,12 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
   };
 
   // Handlers
-  const handleCreateTicket = async (title: string, description: string) => {
-    await createTicket(title, description);
+  const handleCreateTicket = async (
+    title: string,
+    description: string,
+    runPostCommand: boolean
+  ) => {
+    await createTicket(title, description, runPostCommand);
   };
 
   const handleOpenBranch = async (branchName: string, description: string) => {
@@ -136,7 +140,10 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
             )}
             <span className="ml-1">Pull</span>
           </Button>
-          <CreateTicketDialog onSubmit={handleCreateTicket} />
+          <CreateTicketDialog
+            hasPostCommand={!!project.postWorktreeCommand}
+            onSubmit={handleCreateTicket}
+          />
           <OpenBranchDialog onSubmit={handleOpenBranch} />
         </div>
       </div>
