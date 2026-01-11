@@ -1,3 +1,5 @@
+export { GlobalHeader } from "./GlobalHeader";
+export { ProjectBoard } from "./ProjectBoard";
 export { TaskBoardHeader } from "./TaskBoardHeader";
 export { TerminalPanel } from "./TerminalPanel";
 export { TicketCard } from "./TicketCard";

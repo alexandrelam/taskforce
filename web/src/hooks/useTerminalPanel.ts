@@ -1,15 +1,20 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import type { TerminalManagerHandle } from "@/components/TerminalManager";
 import type { Task, Columns } from "@/types";
 
-export function useTerminalPanel(columns: Columns) {
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+interface SelectedTaskInfo {
+  task: Task;
+  projectId: string;
+}
+
+export function useTerminalPanel() {
+  const [selectedTaskInfo, setSelectedTaskInfo] = useState<SelectedTaskInfo | null>(null);
   const [activeTaskIds, setActiveTaskIds] = useState<string[]>([]);
   const [currentPane, setCurrentPane] = useState<string>("claude");
   const terminalManagerRef = useRef<TerminalManagerHandle>(null);
 
-  const openTask = useCallback((task: Task) => {
-    setSelectedTask(task);
+  const openTask = useCallback((task: Task, projectId: string) => {
+    setSelectedTaskInfo({ task, projectId });
     setCurrentPane("claude");
     setActiveTaskIds((prev) => (prev.includes(task.id) ? prev : [...prev, task.id]));
   }, []);
@@ -17,35 +22,40 @@ export function useTerminalPanel(columns: Columns) {
   const closePanel = useCallback(() => {
     terminalManagerRef.current?.closeAll();
     setActiveTaskIds([]);
-    setSelectedTask(null);
+    setSelectedTaskInfo(null);
   }, []);
 
-  // Keep selectedTask in sync with columns data (for updated setupStatus, etc.)
-  useEffect(() => {
-    if (selectedTask) {
+  // Update selected task when columns change (called from each ProjectBoard)
+  const updateTaskFromColumns = useCallback(
+    (columns: Columns) => {
+      if (!selectedTaskInfo) return;
+
       const updatedTask = Object.values(columns)
         .flat()
-        .find((t) => t.id === selectedTask.id);
+        .find((t) => t.id === selectedTaskInfo.task.id);
+
       if (
         updatedTask &&
-        (updatedTask.setupStatus !== selectedTask.setupStatus ||
-          updatedTask.setupError !== selectedTask.setupError ||
-          updatedTask.setupLogs !== selectedTask.setupLogs ||
-          updatedTask.worktreePath !== selectedTask.worktreePath)
+        (updatedTask.setupStatus !== selectedTaskInfo.task.setupStatus ||
+          updatedTask.setupError !== selectedTaskInfo.task.setupError ||
+          updatedTask.setupLogs !== selectedTaskInfo.task.setupLogs ||
+          updatedTask.worktreePath !== selectedTaskInfo.task.worktreePath)
       ) {
-        setSelectedTask(updatedTask);
+        setSelectedTaskInfo({ ...selectedTaskInfo, task: updatedTask });
       }
-    }
-  }, [columns, selectedTask]);
+    },
+    [selectedTaskInfo]
+  );
 
   return {
-    selectedTask,
-    setSelectedTask,
+    selectedTask: selectedTaskInfo?.task ?? null,
+    selectedProjectId: selectedTaskInfo?.projectId ?? null,
     activeTaskIds,
     currentPane,
     setCurrentPane,
     terminalManagerRef,
     openTask,
     closePanel,
+    updateTaskFromColumns,
   };
 }
