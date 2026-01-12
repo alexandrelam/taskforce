@@ -13,6 +13,7 @@ export function useTickets(selectedProjectId: string | null) {
   const [columns, setColumns] = useState<Columns>(INITIAL_COLUMNS);
   const [columnEnteredAt, setColumnEnteredAt] = useState<Record<string, number>>({});
   const previousColumnsRef = useRef<Columns | null>(null);
+  const previousSetupStatusRef = useRef<Record<string, string>>({});
 
   // Fetch tickets with polling
   useEffect(() => {
@@ -49,6 +50,25 @@ export function useTickets(selectedProjectId: string | null) {
             }
           });
           setColumns(newColumns);
+
+          // Detect setup status changes and show toast for failures
+          tickets.forEach((ticket) => {
+            const prevStatus = previousSetupStatusRef.current[ticket.id];
+            const currentStatus = ticket.setupStatus;
+
+            // Detect transition to failed state
+            if (prevStatus === "running_post_command" && currentStatus === "failed") {
+              toast.error("Setup failed", {
+                description: ticket.setupError || "The setup process encountered an error",
+              });
+            }
+
+            // Update previous status
+            if (currentStatus) {
+              previousSetupStatusRef.current[ticket.id] = currentStatus;
+            }
+          });
+
           // Initialize columnEnteredAt for new tickets
           setColumnEnteredAt((prev) => {
             const now = Date.now();

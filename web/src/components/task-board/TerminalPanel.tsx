@@ -135,33 +135,6 @@ export function TerminalPanel({
             )}
           </div>
         )}
-        {isTaskFailed && !hasSetupSession && (
-          <div className="flex flex-col h-full">
-            <div className="flex items-center gap-2 text-destructive mb-4">
-              <AlertCircle className="h-5 w-5" />
-              <span className="font-medium">Setup Failed</span>
-            </div>
-            {selectedTask.setupError && (
-              <div className="mb-4">
-                <div className="text-xs text-muted-foreground mb-2">Error:</div>
-                <pre className="text-sm bg-destructive/10 text-destructive p-3 rounded-md overflow-auto whitespace-pre-wrap">
-                  {selectedTask.setupError}
-                </pre>
-              </div>
-            )}
-            {selectedTask.setupLogs && (
-              <div className="flex-1">
-                <div className="text-xs text-muted-foreground mb-2">Output:</div>
-                <pre className="text-xs bg-muted p-3 rounded-md overflow-auto max-h-64 whitespace-pre-wrap">
-                  {selectedTask.setupLogs}
-                </pre>
-              </div>
-            )}
-            <p className="text-sm text-muted-foreground mt-4">
-              You can delete this ticket and try again.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -42,10 +42,8 @@ function monitorSetupSession(ticketId: string, sessionName: string): void {
           setupStatus: "failed",
           setupError: "Setup timed out after 10 minutes",
           setupLogs: output,
-          setupTmuxSession: null,
         })
         .where(eq(tickets.id, ticketId));
-      killSetupTmuxSession(sessionName);
       return;
     }
 
