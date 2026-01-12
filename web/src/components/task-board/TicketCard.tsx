@@ -1,5 +1,14 @@
 import { KanbanItem } from "@/components/ui/kanban";
-import { Loader2, GitBranch, AlertCircle, Lock, ExternalLink, Clock } from "lucide-react";
+import {
+  Loader2,
+  GitBranch,
+  AlertCircle,
+  Lock,
+  ExternalLink,
+  Clock,
+  GitPullRequest,
+  Pencil,
+} from "lucide-react";
 import { formatElapsedTime } from "@/hooks/useTimer";
 import type { Task } from "@/types";
 
@@ -12,6 +21,7 @@ interface TicketCardProps {
   onDelete: (e: React.MouseEvent) => void;
   onClearOverride: (e: React.MouseEvent) => void;
   onOpenEditor: (e: React.MouseEvent) => void;
+  onEditTicket: (e: React.MouseEvent) => void;
 }
 
 export function TicketCard({
@@ -23,6 +33,7 @@ export function TicketCard({
   onDelete,
   onClearOverride,
   onOpenEditor,
+  onEditTicket,
 }: TicketCardProps) {
   const isSetupInProgress =
     task.setupStatus === "pending" ||
@@ -41,6 +52,13 @@ export function TicketCard({
         return "Installing dependencies...";
       default:
         return "";
+    }
+  };
+
+  const handlePRClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (task.prLink) {
+      window.open(task.prLink, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -70,6 +88,24 @@ export function TicketCard({
           {!task.isMain && task.title}
         </div>
         <div className="flex items-center gap-1">
+          {task.prLink && (
+            <button
+              onClick={handlePRClick}
+              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary p-1 transition-opacity"
+              title="Open PR"
+            >
+              <GitPullRequest className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {!task.isMain && (
+            <button
+              onClick={onEditTicket}
+              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary p-1 transition-opacity"
+              title="Edit ticket"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
           {hasEditor && !isSetupInProgress && !isSetupFailed && (
             <button
               onClick={onOpenEditor}

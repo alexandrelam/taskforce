@@ -30,4 +30,5 @@ export const tickets = sqliteTable("tickets", {
   setupTmuxSession: text("setup_tmux_session"),
   description: text("description"),
   statusOverride: integer("status_override", { mode: "boolean" }),
+  prLink: text("pr_link"),
 });

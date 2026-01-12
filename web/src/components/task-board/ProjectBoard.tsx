@@ -13,6 +13,7 @@ import { TicketCard } from "./TicketCard";
 import { DeleteTicketDialog } from "./dialogs/DeleteTicketDialog";
 import { CreateTicketDialog } from "./dialogs/CreateTicketDialog";
 import { OpenBranchDialog } from "./dialogs/OpenBranchDialog";
+import { EditTicketDialog } from "./dialogs/EditTicketDialog";
 
 import type { Project, Task, Columns } from "@/types";
 
@@ -40,6 +41,7 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
   // Local UI state
   const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<Task | null>(null);
+  const [ticketToEdit, setTicketToEdit] = useState<Task | null>(null);
 
   // Require 8px movement before drag starts - allows clicks to work
   const sensors = useSensors(
@@ -62,9 +64,10 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
   const handleCreateTicket = async (
     title: string,
     description: string,
-    runPostCommand: boolean
+    runPostCommand: boolean,
+    prLink?: string
   ) => {
-    await createTicket(title, description, runPostCommand);
+    await createTicket(title, description, runPostCommand, prLink);
   };
 
   const handleOpenBranch = async (branchName: string, description: string) => {
@@ -111,6 +114,29 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
       }
     } catch (error) {
       toast.error("Failed to open editor", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  };
+
+  const handleEditTicketClick = (e: React.MouseEvent, task: Task) => {
+    e.stopPropagation();
+    setTicketToEdit(task);
+  };
+
+  const handleConfirmEdit = async (description: string, prLink: string) => {
+    if (!ticketToEdit) return;
+
+    try {
+      await ticketsApi.update(ticketToEdit.id, {
+        description: description || null,
+        prLink: prLink || null,
+      });
+      setTicketToEdit(null);
+      // Polling will refresh the data automatically
+    } catch (error) {
+      console.error("Failed to update ticket:", error);
+      toast.error("Failed to update ticket", {
         description: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -176,6 +202,7 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
                       onDelete={(e) => handleDeleteTicketClick(e, task)}
                       onClearOverride={(e) => handleClearOverride(e, task.id)}
                       onOpenEditor={(e) => handleOpenEditor(e, task.id)}
+                      onEditTicket={(e) => handleEditTicketClick(e, task)}
                     />
                   ))}
                 </KanbanColumn>
@@ -209,6 +236,13 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
         ticket={ticketToDelete}
         onConfirm={handleConfirmDelete}
         onCancel={() => setTicketToDelete(null)}
+      />
+
+      {/* Edit Ticket Dialog */}
+      <EditTicketDialog
+        task={ticketToEdit}
+        onSubmit={handleConfirmEdit}
+        onCancel={() => setTicketToEdit(null)}
       />
     </div>
   );

@@ -32,6 +32,7 @@ export interface Task {
   setupTmuxSession?: string | null;
   description?: string | null;
   statusOverride?: boolean | null;
+  prLink?: string | null;
 }
 
 export interface CommitInfo {
@@ -53,4 +54,5 @@ export interface TicketResponse {
   setupTmuxSession?: string | null;
   description?: string | null;
   statusOverride?: boolean | null;
+  prLink?: string | null;
 }

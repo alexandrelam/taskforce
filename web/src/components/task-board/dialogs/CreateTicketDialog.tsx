@@ -15,7 +15,12 @@ import { Label } from "@/components/ui/label";
 interface CreateTicketDialogProps {
   disabled?: boolean;
   hasPostCommand?: boolean;
-  onSubmit: (title: string, description: string, runPostCommand: boolean) => Promise<void>;
+  onSubmit: (
+    title: string,
+    description: string,
+    runPostCommand: boolean,
+    prLink?: string
+  ) => Promise<void>;
 }
 
 export function CreateTicketDialog({
@@ -26,6 +31,7 @@ export function CreateTicketDialog({
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [prLink, setPrLink] = useState("");
   const [runPostCommand, setRunPostCommand] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -35,9 +41,10 @@ export function CreateTicketDialog({
 
     setIsCreating(true);
     try {
-      await onSubmit(title.trim(), description.trim(), runPostCommand);
+      await onSubmit(title.trim(), description.trim(), runPostCommand, prLink.trim());
       setTitle("");
       setDescription("");
+      setPrLink("");
       setRunPostCommand(true);
       setOpen(false);
     } finally {
@@ -68,6 +75,11 @@ export function CreateTicketDialog({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
+          />
+          <Input
+            placeholder="PR link (optional, e.g., https://github.com/...)"
+            value={prLink}
+            onChange={(e) => setPrLink(e.target.value)}
           />
           {hasPostCommand && (
             <div className="flex items-center justify-between">

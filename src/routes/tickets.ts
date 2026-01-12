@@ -225,11 +225,13 @@ router.post("/", async (req: Request, res: Response) => {
     projectId,
     description,
     runPostCommand = true,
+    prLink,
   } = req.body as {
     title: string;
     projectId?: string;
     description?: string;
     runPostCommand?: boolean;
+    prLink?: string;
   };
   const id = crypto.randomUUID();
   const createdAt = Date.now();
@@ -263,6 +265,7 @@ router.post("/", async (req: Request, res: Response) => {
     setupError: null,
     setupLogs: null,
     description: description ?? null,
+    prLink: prLink ?? null,
   });
 
   // Return immediately
@@ -276,6 +279,7 @@ router.post("/", async (req: Request, res: Response) => {
     isMain: false,
     setupStatus: needsSetup ? "pending" : "ready",
     description: description ?? null,
+    prLink: prLink ?? null,
   });
 
   // Run setup in background (fire and forget)
@@ -290,10 +294,11 @@ router.post("/", async (req: Request, res: Response) => {
 
 // Create ticket from existing branch
 router.post("/from-branch", async (req: Request, res: Response) => {
-  const { branchName, projectId, description } = req.body as {
+  const { branchName, projectId, description, prLink } = req.body as {
     branchName: string;
     projectId: string;
     description?: string;
+    prLink?: string;
   };
 
   if (!branchName || !projectId) {
@@ -328,6 +333,7 @@ router.post("/from-branch", async (req: Request, res: Response) => {
     setupError: null,
     setupLogs: null,
     description: description ?? null,
+    prLink: prLink ?? null,
   });
 
   // Return immediately
@@ -341,6 +347,7 @@ router.post("/from-branch", async (req: Request, res: Response) => {
     isMain: false,
     setupStatus: "pending",
     description: description ?? null,
+    prLink: prLink ?? null,
   });
 
   // Run setup in background (fire and forget)
@@ -394,7 +401,11 @@ router.delete("/:id", async (req: Request<{ id: string }>, res: Response) => {
 
 router.patch("/:id", async (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
-  const { column, description } = req.body as { column?: string; description?: string };
+  const { column, description, prLink } = req.body as {
+    column?: string;
+    description?: string;
+    prLink?: string;
+  };
   console.log(`[PATCH /api/tickets/:id] Request to update ticket '${id}'`);
 
   // Get current ticket state before update
@@ -408,7 +419,12 @@ router.patch("/:id", async (req: Request<{ id: string }>, res: Response) => {
     `[PATCH /api/tickets/:id] Current ticket state: { id: '${existing[0].id}', title: '${existing[0].title}', column: '${existing[0].column}' }`
   );
 
-  const updateData: { column?: string; description?: string; statusOverride?: boolean } = {};
+  const updateData: {
+    column?: string;
+    description?: string;
+    statusOverride?: boolean;
+    prLink?: string;
+  } = {};
   if (column !== undefined) {
     updateData.column = column;
     // Set statusOverride when column changes (manual drag)
@@ -416,6 +432,7 @@ router.patch("/:id", async (req: Request<{ id: string }>, res: Response) => {
     console.log(`[PATCH /api/tickets/:id] Setting statusOverride=true for manual column change`);
   }
   if (description !== undefined) updateData.description = description;
+  if (prLink !== undefined) updateData.prLink = prLink;
 
   await db.update(tickets).set(updateData).where(eq(tickets.id, id));
   console.log(`[PATCH /api/tickets/:id] Successfully updated ticket '${id}'`);

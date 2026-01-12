@@ -69,6 +69,7 @@ export const ticketsApi = {
     projectId: string;
     description?: string | null;
     runPostCommand?: boolean;
+    prLink?: string | null;
   }): Promise<TicketResponse> => {
     const res = await fetch(`${API_BASE}/api/tickets`, {
       method: "POST",
@@ -82,6 +83,7 @@ export const ticketsApi = {
     branchName: string;
     projectId: string;
     description?: string | null;
+    prLink?: string | null;
   }): Promise<TicketResponse> => {
     const res = await fetch(`${API_BASE}/api/tickets/from-branch`, {
       method: "POST",
@@ -91,7 +93,10 @@ export const ticketsApi = {
     return res.json();
   },
 
-  update: async (id: string, data: { column?: string }): Promise<void> => {
+  update: async (
+    id: string,
+    data: { column?: string; description?: string; prLink?: string }
+  ): Promise<void> => {
     await fetch(`${API_BASE}/api/tickets/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

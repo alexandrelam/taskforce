@@ -44,6 +44,7 @@ export function useTickets(selectedProjectId: string | null) {
                 setupTmuxSession: ticket.setupTmuxSession,
                 description: ticket.description,
                 statusOverride: ticket.statusOverride,
+                prLink: ticket.prLink,
               });
             }
           });
@@ -69,7 +70,12 @@ export function useTickets(selectedProjectId: string | null) {
   }, [selectedProjectId]);
 
   const createTicket = useCallback(
-    async (title: string, description?: string, runPostCommand: boolean = true) => {
+    async (
+      title: string,
+      description?: string,
+      runPostCommand: boolean = true,
+      prLink?: string
+    ) => {
       if (!selectedProjectId) return null;
 
       const ticket = await ticketsApi.create({
@@ -77,6 +83,7 @@ export function useTickets(selectedProjectId: string | null) {
         projectId: selectedProjectId,
         description: description?.trim() || null,
         runPostCommand,
+        prLink: prLink?.trim() || null,
       });
 
       setColumns((prev) => ({
@@ -89,6 +96,7 @@ export function useTickets(selectedProjectId: string | null) {
             worktreePath: ticket.worktreePath,
             setupStatus: ticket.setupStatus,
             description: ticket.description,
+            prLink: ticket.prLink,
           },
         ],
       }));
@@ -99,13 +107,14 @@ export function useTickets(selectedProjectId: string | null) {
   );
 
   const createFromBranch = useCallback(
-    async (branchName: string, description?: string) => {
+    async (branchName: string, description?: string, prLink?: string) => {
       if (!selectedProjectId) return null;
 
       const ticket = await ticketsApi.createFromBranch({
         branchName: branchName.trim(),
         projectId: selectedProjectId,
         description: description?.trim() || null,
+        prLink: prLink?.trim() || null,
       });
 
       setColumns((prev) => ({
@@ -118,6 +127,7 @@ export function useTickets(selectedProjectId: string | null) {
             worktreePath: ticket.worktreePath,
             setupStatus: ticket.setupStatus,
             description: ticket.description,
+            prLink: ticket.prLink,
           },
         ],
       }));
