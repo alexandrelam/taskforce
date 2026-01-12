@@ -5,7 +5,6 @@ import { useTerminalPanel } from "@/hooks/useTerminalPanel";
 import { useTimer } from "@/hooks/useTimer";
 
 import { GlobalHeader, ProjectBoard, TerminalPanel } from "./task-board";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 import type { Columns } from "@/types";
 
@@ -65,62 +64,52 @@ export function TaskBoard() {
   const selectedProject = selectedProjects.find((p) => p.id === selectedProjectId) ?? null;
 
   return (
-    <ResizablePanelGroup
-      orientation="horizontal"
-      className="h-screen bg-background text-foreground"
-    >
+    <div className="flex h-screen bg-background text-foreground">
       {/* Left: Boards Section */}
-      <ResizablePanel defaultSize={selectedTask ? 70 : 100} minSize={30}>
-        <div className="flex flex-col overflow-hidden h-full">
-          {/* Global Header */}
-          <GlobalHeader
-            projects={projects}
-            selectedProjects={selectedProjects}
-            projectDropdownOpen={projectDropdownOpen}
-            onProjectDropdownToggle={() => setProjectDropdownOpen(!projectDropdownOpen)}
-            onToggleProject={toggleProjectSelection}
-            onProjectsChange={fetchProjects}
-          />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Global Header */}
+        <GlobalHeader
+          projects={projects}
+          selectedProjects={selectedProjects}
+          projectDropdownOpen={projectDropdownOpen}
+          onProjectDropdownToggle={() => setProjectDropdownOpen(!projectDropdownOpen)}
+          onToggleProject={toggleProjectSelection}
+          onProjectsChange={fetchProjects}
+        />
 
-          {/* Stacked Boards */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {selectedProjects.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
-                <p className="text-lg mb-2">No projects selected</p>
-                <p className="text-sm">Select up to 3 projects from the dropdown above</p>
-              </div>
-            ) : (
-              selectedProjects.map((project) => (
-                <ProjectBoard
-                  key={project.id}
-                  project={project}
-                  onOpenTask={openTask}
-                  onColumnsChange={(columns) => handleColumnsChange(project.id, columns)}
-                />
-              ))
-            )}
-          </div>
+        {/* Stacked Boards */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {selectedProjects.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
+              <p className="text-lg mb-2">No projects selected</p>
+              <p className="text-sm">Select up to 3 projects from the dropdown above</p>
+            </div>
+          ) : (
+            selectedProjects.map((project) => (
+              <ProjectBoard
+                key={project.id}
+                project={project}
+                onOpenTask={openTask}
+                onColumnsChange={(columns) => handleColumnsChange(project.id, columns)}
+              />
+            ))
+          )}
         </div>
-      </ResizablePanel>
+      </div>
 
       {/* Right: Terminal Panel (shared) */}
       {selectedTask && (
-        <>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={30} minSize={15} maxSize={60}>
-            <TerminalPanel
-              selectedTask={selectedTask}
-              selectedProject={selectedProject}
-              currentPane={currentPane}
-              activeTaskIds={activeTaskIds}
-              taskCwdMap={taskCwdMap}
-              terminalManagerRef={terminalManagerRef}
-              onPaneChange={setCurrentPane}
-              onClose={closePanel}
-            />
-          </ResizablePanel>
-        </>
+        <TerminalPanel
+          selectedTask={selectedTask}
+          selectedProject={selectedProject}
+          currentPane={currentPane}
+          activeTaskIds={activeTaskIds}
+          taskCwdMap={taskCwdMap}
+          terminalManagerRef={terminalManagerRef}
+          onPaneChange={setCurrentPane}
+          onClose={closePanel}
+        />
       )}
-    </ResizablePanelGroup>
+    </div>
   );
 }

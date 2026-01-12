@@ -73,7 +73,7 @@ export function TerminalPanel({
   const panes: Pane[] = selectedProject?.panes ?? [];
 
   return (
-    <div className="h-full border-l border-border flex flex-col">
+    <div className="w-[600px] border-l border-border flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
           <div className="text-sm text-muted-foreground">{getPanelTitle()}</div>
