@@ -127,13 +127,19 @@ export function useTickets(selectedProjectId: string | null) {
   );
 
   const createFromBranch = useCallback(
-    async (branchName: string, description?: string, prLink?: string) => {
+    async (
+      branchName: string,
+      description?: string,
+      runPostCommand: boolean = true,
+      prLink?: string
+    ) => {
       if (!selectedProjectId) return null;
 
       const ticket = await ticketsApi.createFromBranch({
         branchName: branchName.trim(),
         projectId: selectedProjectId,
         description: description?.trim() || null,
+        runPostCommand,
         prLink: prLink?.trim() || null,
       });
 

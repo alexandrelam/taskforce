@@ -83,6 +83,7 @@ export const ticketsApi = {
     branchName: string;
     projectId: string;
     description?: string | null;
+    runPostCommand?: boolean;
     prLink?: string | null;
   }): Promise<TicketResponse> => {
     const res = await fetch(`${API_BASE}/api/tickets/from-branch`, {

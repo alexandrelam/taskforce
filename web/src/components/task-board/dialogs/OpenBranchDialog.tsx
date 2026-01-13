@@ -9,16 +9,20 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface OpenBranchDialogProps {
   disabled?: boolean;
-  onSubmit: (branchName: string, description: string) => Promise<void>;
+  hasPostCommand?: boolean;
+  onSubmit: (branchName: string, description: string, runPostCommand: boolean) => Promise<void>;
 }
 
-export function OpenBranchDialog({ disabled, onSubmit }: OpenBranchDialogProps) {
+export function OpenBranchDialog({ disabled, hasPostCommand, onSubmit }: OpenBranchDialogProps) {
   const [open, setOpen] = useState(false);
   const [branchName, setBranchName] = useState("");
   const [description, setDescription] = useState("");
+  const [runPostCommand, setRunPostCommand] = useState(true);
   const [isOpening, setIsOpening] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,9 +31,10 @@ export function OpenBranchDialog({ disabled, onSubmit }: OpenBranchDialogProps) 
 
     setIsOpening(true);
     try {
-      await onSubmit(branchName.trim(), description.trim());
+      await onSubmit(branchName.trim(), description.trim(), runPostCommand);
       setBranchName("");
       setDescription("");
+      setRunPostCommand(true);
       setOpen(false);
     } finally {
       setIsOpening(false);
@@ -61,6 +66,18 @@ export function OpenBranchDialog({ disabled, onSubmit }: OpenBranchDialogProps) 
             onChange={(e) => setDescription(e.target.value)}
             className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
           />
+          {hasPostCommand && (
+            <div className="flex items-center justify-between">
+              <Label htmlFor="run-post-command-branch" className="text-sm text-muted-foreground">
+                Run post-worktree command
+              </Label>
+              <Switch
+                id="run-post-command-branch"
+                checked={runPostCommand}
+                onCheckedChange={setRunPostCommand}
+              />
+            </div>
+          )}
           <Button type="submit" className="w-full" disabled={isOpening}>
             {isOpening ? (
               <>

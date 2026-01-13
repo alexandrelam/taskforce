@@ -70,8 +70,12 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
     await createTicket(title, description, runPostCommand, prLink);
   };
 
-  const handleOpenBranch = async (branchName: string, description: string) => {
-    await createFromBranch(branchName, description);
+  const handleOpenBranch = async (
+    branchName: string,
+    description: string,
+    runPostCommand: boolean
+  ) => {
+    await createFromBranch(branchName, description, runPostCommand);
   };
 
   const handleDeleteTicketClick = (e: React.MouseEvent, task: Task) => {
@@ -170,7 +174,10 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
             hasPostCommand={!!project.postWorktreeCommand}
             onSubmit={handleCreateTicket}
           />
-          <OpenBranchDialog onSubmit={handleOpenBranch} />
+          <OpenBranchDialog
+            hasPostCommand={!!project.postWorktreeCommand}
+            onSubmit={handleOpenBranch}
+          />
         </div>
       </div>
 

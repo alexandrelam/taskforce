@@ -292,11 +292,18 @@ router.post("/", async (req: Request, res: Response) => {
 
 // Create ticket from existing branch
 router.post("/from-branch", async (req: Request, res: Response) => {
-  const { branchName, projectId, description, prLink } = req.body as {
+  const {
+    branchName,
+    projectId,
+    description,
+    prLink,
+    runPostCommand = true,
+  } = req.body as {
     branchName: string;
     projectId: string;
     description?: string;
     prLink?: string;
+    runPostCommand?: boolean;
   };
 
   if (!branchName || !projectId) {
@@ -349,13 +356,13 @@ router.post("/from-branch", async (req: Request, res: Response) => {
   });
 
   // Run setup in background (fire and forget)
-  runTicketSetup(
-    id,
-    () => createWorktreeFromBranch(projectPath, branchName),
-    postWorktreeCommand
-  ).catch((err) => {
-    console.error(`Background setup failed for ticket ${id}:`, err);
-  });
+  // Only pass postWorktreeCommand if runPostCommand is true
+  const commandToRun = runPostCommand ? postWorktreeCommand : null;
+  runTicketSetup(id, () => createWorktreeFromBranch(projectPath, branchName), commandToRun).catch(
+    (err) => {
+      console.error(`Background setup failed for ticket ${id}:`, err);
+    }
+  );
 });
 
 router.delete("/:id", async (req: Request<{ id: string }>, res: Response) => {
