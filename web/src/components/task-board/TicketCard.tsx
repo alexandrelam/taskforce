@@ -11,12 +11,14 @@ import {
 } from "lucide-react";
 import { formatElapsedTime } from "@/hooks/useTimer";
 import type { Task } from "@/types";
+import { Ripple } from "@/components/ui/ripple";
 
 interface TicketCardProps {
   task: Task;
   columnEnteredAt: number | undefined;
   hasEditor: boolean;
   isDeleting: boolean;
+  isSelected: boolean;
   onClick: () => void;
   onDelete: (e: React.MouseEvent) => void;
   onClearOverride: (e: React.MouseEvent) => void;
@@ -29,6 +31,7 @@ export function TicketCard({
   columnEnteredAt,
   hasEditor,
   isDeleting,
+  isSelected,
   onClick,
   onDelete,
   onClearOverride,
@@ -67,14 +70,17 @@ export function TicketCard({
       value={task.id}
       asHandle
       onClick={onClick}
-      className={`group p-3 bg-card rounded-md border transition-colors ${
-        isSetupFailed
-          ? "border-destructive/50 hover:border-destructive"
-          : hasOverride
-            ? "border-amber-500/50 hover:border-amber-500"
-            : "border-border hover:border-primary/50"
+      className={`group p-3 bg-card rounded-md border-2 transition-all duration-300 relative overflow-hidden ${
+        isSelected
+          ? "border-primary"
+          : isSetupFailed
+            ? "border-destructive/50 hover:border-destructive"
+            : hasOverride
+              ? "border-amber-500/50 hover:border-amber-500"
+              : "border-border hover:border-primary/50"
       }`}
     >
+      {isSelected && <Ripple mainCircleSize={100} numCircles={5} />}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           {isSetupInProgress && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}

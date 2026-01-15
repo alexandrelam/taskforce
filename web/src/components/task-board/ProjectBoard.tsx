@@ -23,9 +23,15 @@ interface ProjectBoardProps {
   project: Project;
   onOpenTask: (task: Task, projectId: string) => void;
   onColumnsChange?: (columns: Columns) => void;
+  selectedTaskId: string | null;
 }
 
-export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBoardProps) {
+export function ProjectBoard({
+  project,
+  onOpenTask,
+  onColumnsChange,
+  selectedTaskId,
+}: ProjectBoardProps) {
   const {
     columns,
     columnEnteredAt,
@@ -205,6 +211,7 @@ export function ProjectBoard({ project, onOpenTask, onColumnsChange }: ProjectBo
                       columnEnteredAt={columnEnteredAt[task.id]}
                       hasEditor={!!project.editor}
                       isDeleting={deletingTicketId === task.id}
+                      isSelected={selectedTaskId === task.id}
                       onClick={() => onOpenTask(task, project.id)}
                       onDelete={(e) => handleDeleteTicketClick(e, task)}
                       onClearOverride={(e) => handleClearOverride(e, task.id)}

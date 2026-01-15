@@ -91,6 +91,7 @@ export function TaskBoard() {
                 project={project}
                 onOpenTask={openTask}
                 onColumnsChange={(columns) => handleColumnsChange(project.id, columns)}
+                selectedTaskId={selectedTask?.id ?? null}
               />
             ))
           )}
