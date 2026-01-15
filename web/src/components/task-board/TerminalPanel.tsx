@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 import { TerminalManager, type TerminalManagerHandle } from "@/components/TerminalManager";
 import { TerminalTabs } from "@/components/TerminalTabs";
 import type { Task, Project, Pane } from "@/types";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 interface TerminalPanelProps {
   selectedTask: Task;
@@ -25,6 +26,9 @@ export function TerminalPanel({
   onPaneChange,
   onClose,
 }: TerminalPanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useClickOutside(panelRef, onClose);
+
   const isTaskReady = !selectedTask.setupStatus || selectedTask.setupStatus === "ready";
   const isTaskFailed = selectedTask.setupStatus === "failed";
   const hasSetupSession = !!selectedTask.setupTmuxSession;
@@ -73,7 +77,7 @@ export function TerminalPanel({
   const panes: Pane[] = selectedProject?.panes ?? [];
 
   return (
-    <div className="w-[70%] min-w-[600px] border-l border-border flex flex-col">
+    <div ref={panelRef} className="w-[70%] min-w-[600px] border-l border-border flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
           <div className="text-sm text-muted-foreground">{getPanelTitle()}</div>
