@@ -19,7 +19,8 @@ interface CreateTicketDialogProps {
     title: string,
     description: string,
     runPostCommand: boolean,
-    prLink?: string
+    prLink?: string,
+    baseBranch?: string
   ) => Promise<void>;
 }
 
@@ -32,6 +33,7 @@ export function CreateTicketDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [prLink, setPrLink] = useState("");
+  const [baseBranch, setBaseBranch] = useState("");
   const [runPostCommand, setRunPostCommand] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -41,10 +43,17 @@ export function CreateTicketDialog({
 
     setIsCreating(true);
     try {
-      await onSubmit(title.trim(), description.trim(), runPostCommand, prLink.trim());
+      await onSubmit(
+        title.trim(),
+        description.trim(),
+        runPostCommand,
+        prLink.trim(),
+        baseBranch.trim() || undefined
+      );
       setTitle("");
       setDescription("");
       setPrLink("");
+      setBaseBranch("");
       setRunPostCommand(true);
       setOpen(false);
     } finally {
@@ -80,6 +89,11 @@ export function CreateTicketDialog({
             placeholder="PR link (optional, e.g., https://github.com/...)"
             value={prLink}
             onChange={(e) => setPrLink(e.target.value)}
+          />
+          <Input
+            placeholder="Base branch (optional, defaults to current branch)"
+            value={baseBranch}
+            onChange={(e) => setBaseBranch(e.target.value)}
           />
           {hasPostCommand && (
             <div className="flex items-center justify-between">

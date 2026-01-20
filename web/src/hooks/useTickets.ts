@@ -94,7 +94,8 @@ export function useTickets(selectedProjectId: string | null) {
       title: string,
       description?: string,
       runPostCommand: boolean = true,
-      prLink?: string
+      prLink?: string,
+      baseBranch?: string
     ) => {
       if (!selectedProjectId) return null;
 
@@ -104,6 +105,7 @@ export function useTickets(selectedProjectId: string | null) {
         description: description?.trim() || null,
         runPostCommand,
         prLink: prLink?.trim() || null,
+        baseBranch: baseBranch?.trim() || null,
       });
 
       setColumns((prev) => ({

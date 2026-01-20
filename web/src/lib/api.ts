@@ -70,6 +70,7 @@ export const ticketsApi = {
     description?: string | null;
     runPostCommand?: boolean;
     prLink?: string | null;
+    baseBranch?: string | null;
   }): Promise<TicketResponse> => {
     const res = await fetch(`${API_BASE}/api/tickets`, {
       method: "POST",

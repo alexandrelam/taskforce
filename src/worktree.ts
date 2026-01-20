@@ -59,9 +59,14 @@ interface WorktreeResult {
  * Create a git worktree for a ticket
  * @param projectPath - The path to the project (main git repo)
  * @param ticketSlug - The slugified ticket title
+ * @param baseBranch - Optional base branch to create from (defaults to current branch)
  * @returns The worktree path or error
  */
-export function createWorktree(projectPath: string, ticketSlug: string): WorktreeResult {
+export function createWorktree(
+  projectPath: string,
+  ticketSlug: string,
+  baseBranch?: string
+): WorktreeResult {
   // Check if it's a git repo
   if (!isGitRepo(projectPath)) {
     return { worktreePath: null, error: "Project is not a git repository" };
@@ -75,14 +80,17 @@ export function createWorktree(projectPath: string, ticketSlug: string): Worktre
   const worktreeName = `${projectName}-${ticketSlug}`;
   const worktreePath = path.join(parentDir, worktreeName);
 
-  // Get current branch
-  const branch = getCurrentBranch(projectPath);
+  // Use provided baseBranch or fall back to current branch
+  let branch = baseBranch?.trim() || null;
   if (!branch) {
-    return { worktreePath: null, error: "Could not determine current branch" };
+    branch = getCurrentBranch(projectPath);
+  }
+  if (!branch) {
+    return { worktreePath: null, error: "Could not determine base branch" };
   }
 
   try {
-    // Create worktree from current branch
+    // Create worktree from base branch
     execSync(`git worktree add "${worktreePath}" -b "${ticketSlug}" ${branch}`, {
       cwd: projectPath,
       encoding: "utf-8",
