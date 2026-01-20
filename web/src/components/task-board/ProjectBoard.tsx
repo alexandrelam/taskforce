@@ -1,8 +1,18 @@
 import { useState, useEffect } from "react";
-import { Loader2, GitPullRequest } from "lucide-react";
+import { Loader2, GitPullRequest, MoreVertical, Plus, GitBranch } from "lucide-react";
 import { toast } from "sonner";
 import { Kanban, KanbanBoard, KanbanColumn, KanbanOverlay } from "@/components/ui/kanban";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 
 import { useTickets } from "@/hooks/useTickets";
@@ -11,13 +21,192 @@ import { ticketsApi } from "@/lib/api";
 
 import { TicketCard } from "./TicketCard";
 import { DeleteTicketDialog } from "./dialogs/DeleteTicketDialog";
-import { CreateTicketDialog } from "./dialogs/CreateTicketDialog";
-import { OpenBranchDialog } from "./dialogs/OpenBranchDialog";
 import { EditTicketDialog } from "./dialogs/EditTicketDialog";
 
 import type { Project, Task, Columns } from "@/types";
 
 const COLUMN_ORDER = ["To Do", "In Progress", "Done"];
+
+// Controlled dialog components for mobile menu
+interface ControlledCreateTicketDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  hasPostCommand?: boolean;
+  onSubmit: (
+    title: string,
+    description: string,
+    runPostCommand: boolean,
+    prLink?: string
+  ) => Promise<void>;
+}
+
+function ControlledCreateTicketDialog({
+  open,
+  onOpenChange,
+  hasPostCommand,
+  onSubmit,
+}: ControlledCreateTicketDialogProps) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [prLink, setPrLink] = useState("");
+  const [runPostCommand, setRunPostCommand] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || isCreating) return;
+
+    setIsCreating(true);
+    try {
+      await onSubmit(title.trim(), description.trim(), runPostCommand, prLink.trim());
+      setTitle("");
+      setDescription("");
+      setPrLink("");
+      setRunPostCommand(true);
+      onOpenChange(false);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create New Ticket</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            placeholder="Ticket title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            autoFocus
+          />
+          <textarea
+            placeholder="Description (optional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
+          />
+          <Input
+            placeholder="PR link (optional, e.g., https://github.com/...)"
+            value={prLink}
+            onChange={(e) => setPrLink(e.target.value)}
+          />
+          {hasPostCommand && (
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="run-post-command-mobile-board"
+                className="text-sm text-muted-foreground"
+              >
+                Run post-worktree command
+              </Label>
+              <Switch
+                id="run-post-command-mobile-board"
+                checked={runPostCommand}
+                onCheckedChange={setRunPostCommand}
+              />
+            </div>
+          )}
+          <Button type="submit" className="w-full" disabled={isCreating}>
+            {isCreating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Creating...
+              </>
+            ) : (
+              "Create"
+            )}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface ControlledOpenBranchDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  hasPostCommand?: boolean;
+  onSubmit: (branchName: string, description: string, runPostCommand: boolean) => Promise<void>;
+}
+
+function ControlledOpenBranchDialog({
+  open,
+  onOpenChange,
+  hasPostCommand,
+  onSubmit,
+}: ControlledOpenBranchDialogProps) {
+  const [branchName, setBranchName] = useState("");
+  const [description, setDescription] = useState("");
+  const [runPostCommand, setRunPostCommand] = useState(true);
+  const [isOpening, setIsOpening] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!branchName.trim() || isOpening) return;
+
+    setIsOpening(true);
+    try {
+      await onSubmit(branchName.trim(), description.trim(), runPostCommand);
+      setBranchName("");
+      setDescription("");
+      setRunPostCommand(true);
+      onOpenChange(false);
+    } finally {
+      setIsOpening(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Open Existing Branch</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            placeholder="Branch name (e.g., feature-x or origin/feature-x)"
+            value={branchName}
+            onChange={(e) => setBranchName(e.target.value)}
+            autoFocus
+          />
+          <textarea
+            placeholder="Description (optional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
+          />
+          {hasPostCommand && (
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="run-post-command-branch-mobile-board"
+                className="text-sm text-muted-foreground"
+              >
+                Run post-worktree command
+              </Label>
+              <Switch
+                id="run-post-command-branch-mobile-board"
+                checked={runPostCommand}
+                onCheckedChange={setRunPostCommand}
+              />
+            </div>
+          )}
+          <Button type="submit" className="w-full" disabled={isOpening}>
+            {isOpening ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Opening...
+              </>
+            ) : (
+              "Open Branch"
+            )}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 interface ProjectBoardProps {
   project: Project;
@@ -48,6 +237,8 @@ export function ProjectBoard({
   const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<Task | null>(null);
   const [ticketToEdit, setTicketToEdit] = useState<Task | null>(null);
+  const [createTicketOpen, setCreateTicketOpen] = useState(false);
+  const [openBranchOpen, setOpenBranchOpen] = useState(false);
 
   // Require 8px movement before drag starts - allows clicks to work
   const sensors = useSensors(
@@ -168,22 +359,31 @@ export function ProjectBoard({
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" disabled={isPulling} onClick={pull}>
-            {isPulling ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <GitPullRequest className="h-4 w-4" />
-            )}
-            <span className="ml-1">Pull</span>
-          </Button>
-          <CreateTicketDialog
-            hasPostCommand={!!project.postWorktreeCommand}
-            onSubmit={handleCreateTicket}
-          />
-          <OpenBranchDialog
-            hasPostCommand={!!project.postWorktreeCommand}
-            onSubmit={handleOpenBranch}
-          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem disabled={isPulling} onClick={pull}>
+                {isPulling ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <GitPullRequest className="h-4 w-4 mr-2" />
+                )}
+                <span>Pull</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setCreateTicketOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                <span>Add Ticket</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setOpenBranchOpen(true)}>
+                <GitBranch className="h-4 w-4 mr-2" />
+                <span>Open Branch</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -257,6 +457,20 @@ export function ProjectBoard({
         task={ticketToEdit}
         onSubmit={handleConfirmEdit}
         onCancel={() => setTicketToEdit(null)}
+      />
+
+      {/* Controlled dialogs for mobile menu */}
+      <ControlledCreateTicketDialog
+        open={createTicketOpen}
+        onOpenChange={setCreateTicketOpen}
+        hasPostCommand={!!project.postWorktreeCommand}
+        onSubmit={handleCreateTicket}
+      />
+      <ControlledOpenBranchDialog
+        open={openBranchOpen}
+        onOpenChange={setOpenBranchOpen}
+        hasPostCommand={!!project.postWorktreeCommand}
+        onSubmit={handleOpenBranch}
       />
     </div>
   );
