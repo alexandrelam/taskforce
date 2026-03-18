@@ -94,6 +94,12 @@ export function setupPtyWebSocket(server: Server): void {
           tmuxSessionName,
           "-c",
           cwd, // Set working directory for new sessions
+          ";",
+          "set-option",
+          "-t",
+          tmuxSessionName,
+          "mouse",
+          "on", // Enable mouse scrolling through tmux scrollback
         ],
         {
           name: "xterm-256color",

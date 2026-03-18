@@ -494,7 +494,7 @@ export function ProjectBoard({
   // Stack UI state
   const [hoveredStackId, setHoveredStackId] = useState<string | null>(null);
   const boardContainerRef = useRef<HTMLDivElement>(null);
-  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Build a task lookup map for StackHeader
   const taskMap = useMemo(() => {
@@ -510,7 +510,7 @@ export function ProjectBoard({
   // Delayed hover: gives user time to move mouse to the StackHeader
   const handleStackHover = useCallback(
     (ticketId: string | null) => {
-      clearTimeout(hoverTimeoutRef.current);
+      clearTimeout(hoverTimeoutRef.current ?? undefined);
       if (!ticketId) {
         hoverTimeoutRef.current = setTimeout(() => setHoveredStackId(null), 300);
         return;
@@ -523,7 +523,7 @@ export function ProjectBoard({
 
   // Called by StackHeader to keep itself visible while hovered
   const handleStackHeaderEnter = useCallback(() => {
-    clearTimeout(hoverTimeoutRef.current);
+    clearTimeout(hoverTimeoutRef.current ?? undefined);
   }, []);
 
   const handleStackHeaderLeave = useCallback(() => {
