@@ -7,6 +7,7 @@ import settingsRouter from "./routes/settings.js";
 import projectsRouter from "./routes/projects.js";
 import ticketsRouter from "./routes/tickets.js";
 import trackingRouter from "./routes/tracking.js";
+import { startPrPoller } from "./pr-poller.js";
 
 const app = express();
 app.use(cors());
@@ -41,4 +42,5 @@ setupPtyWebSocket(server);
 
 server.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
+  startPrPoller();
 });

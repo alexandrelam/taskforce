@@ -244,7 +244,7 @@ router.post("/", async (req: Request, res: Response) => {
 
   if (projectId) {
     const project = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-    if (project[0]?.path) {
+    if (project[0]?.path && project[0].useWorktrees !== false) {
       needsSetup = true;
       projectPath = project[0].path;
       postWorktreeCommand = project[0].postWorktreeCommand ?? null;
@@ -325,11 +325,12 @@ router.post("/from-branch", async (req: Request, res: Response) => {
   const createdAt = Date.now();
   const projectPath = project[0].path;
   const postWorktreeCommand = project[0].postWorktreeCommand ?? null;
+  const needsSetup = project[0].useWorktrees !== false;
 
   // Use branch name as title
   const title = branchName;
 
-  // Insert ticket immediately with pending status
+  // Insert ticket immediately with pending status if setup needed
   await db.insert(tickets).values({
     id,
     title,
@@ -338,7 +339,7 @@ router.post("/from-branch", async (req: Request, res: Response) => {
     projectId,
     worktreePath: null,
     isMain: false,
-    setupStatus: "pending",
+    setupStatus: needsSetup ? "pending" : "ready",
     setupError: null,
     setupLogs: null,
     description: description ?? null,
@@ -354,19 +355,20 @@ router.post("/from-branch", async (req: Request, res: Response) => {
     projectId,
     worktreePath: null,
     isMain: false,
-    setupStatus: "pending",
+    setupStatus: needsSetup ? "pending" : "ready",
     description: description ?? null,
     prLink: prLink ?? null,
   });
 
-  // Run setup in background (fire and forget)
-  // Only pass postWorktreeCommand if runPostCommand is true
-  const commandToRun = runPostCommand ? postWorktreeCommand : null;
-  runTicketSetup(id, () => createWorktreeFromBranch(projectPath, branchName), commandToRun).catch(
-    (err) => {
-      console.error(`Background setup failed for ticket ${id}:`, err);
-    }
-  );
+  // Run setup in background (fire and forget) only if worktrees enabled
+  if (needsSetup) {
+    const commandToRun = runPostCommand ? postWorktreeCommand : null;
+    runTicketSetup(id, () => createWorktreeFromBranch(projectPath, branchName), commandToRun).catch(
+      (err) => {
+        console.error(`Background setup failed for ticket ${id}:`, err);
+      }
+    );
+  }
 });
 
 router.delete("/:id", async (req: Request<{ id: string }>, res: Response) => {
@@ -509,8 +511,8 @@ router.post("/:id/open-editor", async (req: Request<{ id: string }>, res: Respon
   }
 
   // Determine the directory to open
-  // For main tickets, use project path; for regular tickets, use worktreePath
-  const targetPath = ticket.isMain ? project.path : ticket.worktreePath;
+  // For main tickets or when no worktree exists, use project path; otherwise use worktreePath
+  const targetPath = ticket.isMain || !ticket.worktreePath ? project.path : ticket.worktreePath;
 
   if (!targetPath) {
     console.log(`[open-editor] No path available for ticket '${id}'`);

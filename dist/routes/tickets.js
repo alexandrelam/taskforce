@@ -26,10 +26,8 @@ function monitorSetupSession(ticketId, sessionName) {
                 setupStatus: "failed",
                 setupError: "Setup timed out after 10 minutes",
                 setupLogs: output,
-                setupTmuxSession: null,
             })
                 .where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, ticketId));
-            (0, worktree_js_1.killSetupTmuxSession)(sessionName);
             return;
         }
         const status = (0, worktree_js_1.getTmuxSessionStatus)(sessionName);
@@ -179,7 +177,7 @@ router.get("/", async (req, res) => {
     }
 });
 router.post("/", async (req, res) => {
-    const { title, projectId, description, runPostCommand = true } = req.body;
+    const { title, projectId, description, runPostCommand = true, prLink, baseBranch, } = req.body;
     const id = crypto.randomUUID();
     const createdAt = Date.now();
     // Determine if we need async setup
@@ -189,7 +187,7 @@ router.post("/", async (req, res) => {
     let slug = null;
     if (projectId) {
         const project = await index_js_1.db.select().from(schema_js_1.projects).where((0, drizzle_orm_1.eq)(schema_js_1.projects.id, projectId)).limit(1);
-        if (project[0]?.path) {
+        if (project[0]?.path && project[0].useWorktrees !== false) {
             needsSetup = true;
             projectPath = project[0].path;
             postWorktreeCommand = project[0].postWorktreeCommand ?? null;
@@ -209,6 +207,7 @@ router.post("/", async (req, res) => {
         setupError: null,
         setupLogs: null,
         description: description ?? null,
+        prLink: prLink ?? null,
     });
     // Return immediately
     res.status(201).json({
@@ -221,19 +220,20 @@ router.post("/", async (req, res) => {
         isMain: false,
         setupStatus: needsSetup ? "pending" : "ready",
         description: description ?? null,
+        prLink: prLink ?? null,
     });
     // Run setup in background (fire and forget)
     if (needsSetup && projectPath && slug) {
         // Only pass postWorktreeCommand if runPostCommand is true
         const commandToRun = runPostCommand ? postWorktreeCommand : null;
-        runTicketSetup(id, () => (0, worktree_js_1.createWorktree)(projectPath, slug), commandToRun).catch((err) => {
+        runTicketSetup(id, () => (0, worktree_js_1.createWorktree)(projectPath, slug, baseBranch), commandToRun).catch((err) => {
             console.error(`Background setup failed for ticket ${id}:`, err);
         });
     }
 });
 // Create ticket from existing branch
 router.post("/from-branch", async (req, res) => {
-    const { branchName, projectId, description } = req.body;
+    const { branchName, projectId, description, prLink, runPostCommand = true, } = req.body;
     if (!branchName || !projectId) {
         res.status(400).json({ success: false, error: "branchName and projectId are required" });
         return;
@@ -247,9 +247,10 @@ router.post("/from-branch", async (req, res) => {
     const createdAt = Date.now();
     const projectPath = project[0].path;
     const postWorktreeCommand = project[0].postWorktreeCommand ?? null;
+    const needsSetup = project[0].useWorktrees !== false;
     // Use branch name as title
     const title = branchName;
-    // Insert ticket immediately with pending status
+    // Insert ticket immediately with pending status if setup needed
     await index_js_1.db.insert(schema_js_1.tickets).values({
         id,
         title,
@@ -258,10 +259,11 @@ router.post("/from-branch", async (req, res) => {
         projectId,
         worktreePath: null,
         isMain: false,
-        setupStatus: "pending",
+        setupStatus: needsSetup ? "pending" : "ready",
         setupError: null,
         setupLogs: null,
         description: description ?? null,
+        prLink: prLink ?? null,
     });
     // Return immediately
     res.status(201).json({
@@ -272,13 +274,17 @@ router.post("/from-branch", async (req, res) => {
         projectId,
         worktreePath: null,
         isMain: false,
-        setupStatus: "pending",
+        setupStatus: needsSetup ? "pending" : "ready",
         description: description ?? null,
+        prLink: prLink ?? null,
     });
-    // Run setup in background (fire and forget)
-    runTicketSetup(id, () => (0, worktree_js_1.createWorktreeFromBranch)(projectPath, branchName), postWorktreeCommand).catch((err) => {
-        console.error(`Background setup failed for ticket ${id}:`, err);
-    });
+    // Run setup in background (fire and forget) only if worktrees enabled
+    if (needsSetup) {
+        const commandToRun = runPostCommand ? postWorktreeCommand : null;
+        runTicketSetup(id, () => (0, worktree_js_1.createWorktreeFromBranch)(projectPath, branchName), commandToRun).catch((err) => {
+            console.error(`Background setup failed for ticket ${id}:`, err);
+        });
+    }
 });
 router.delete("/:id", async (req, res) => {
     const { id } = req.params;
@@ -314,7 +320,7 @@ router.delete("/:id", async (req, res) => {
 });
 router.patch("/:id", async (req, res) => {
     const { id } = req.params;
-    const { column, description } = req.body;
+    const { column, description, prLink } = req.body;
     console.log(`[PATCH /api/tickets/:id] Request to update ticket '${id}'`);
     // Get current ticket state before update
     const existing = await index_js_1.db.select().from(schema_js_1.tickets).where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, id)).limit(1);
@@ -333,6 +339,8 @@ router.patch("/:id", async (req, res) => {
     }
     if (description !== undefined)
         updateData.description = description;
+    if (prLink !== undefined)
+        updateData.prLink = prLink;
     await index_js_1.db.update(schema_js_1.tickets).set(updateData).where((0, drizzle_orm_1.eq)(schema_js_1.tickets.id, id));
     console.log(`[PATCH /api/tickets/:id] Successfully updated ticket '${id}'`);
     res.json({ success: true });
@@ -386,8 +394,8 @@ router.post("/:id/open-editor", async (req, res) => {
         return;
     }
     // Determine the directory to open
-    // For main tickets, use project path; for regular tickets, use worktreePath
-    const targetPath = ticket.isMain ? project.path : ticket.worktreePath;
+    // For main tickets or when no worktree exists, use project path; otherwise use worktreePath
+    const targetPath = ticket.isMain || !ticket.worktreePath ? project.path : ticket.worktreePath;
     if (!targetPath) {
         console.log(`[open-editor] No path available for ticket '${id}'`);
         res.status(400).json({ success: false, error: "No path available for this ticket" });

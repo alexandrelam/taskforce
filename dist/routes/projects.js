@@ -18,10 +18,11 @@ router.get("/", async (_req, res) => {
     res.json(projectsWithPanes);
 });
 router.post("/", async (req, res) => {
-    const { name, path, postWorktreeCommand, panes, editor } = req.body;
+    const { name, path, postWorktreeCommand, panes, editor, useWorktrees } = req.body;
     const id = crypto.randomUUID();
     const createdAt = Date.now();
     const panesJson = panes ? JSON.stringify(panes) : null;
+    const worktreesEnabled = useWorktrees !== false;
     await index_js_1.db.insert(schema_js_1.projects).values({
         id,
         name,
@@ -30,6 +31,7 @@ router.post("/", async (req, res) => {
         postWorktreeCommand: postWorktreeCommand ?? null,
         panes: panesJson,
         editor: editor ?? null,
+        useWorktrees: worktreesEnabled,
     });
     // Auto-create main ticket for the project
     const mainTicketId = crypto.randomUUID();
@@ -50,6 +52,7 @@ router.post("/", async (req, res) => {
         postWorktreeCommand: postWorktreeCommand ?? null,
         panes: panes ?? [],
         editor: editor ?? null,
+        useWorktrees: worktreesEnabled,
     });
 });
 router.delete("/:id", async (req, res) => {
@@ -77,7 +80,7 @@ router.delete("/:id", async (req, res) => {
 });
 router.patch("/:id", async (req, res) => {
     const { id } = req.params;
-    const { postWorktreeCommand, panes, editor } = req.body;
+    const { postWorktreeCommand, panes, editor, useWorktrees } = req.body;
     const updateData = {};
     if (postWorktreeCommand !== undefined) {
         updateData.postWorktreeCommand = postWorktreeCommand || null;
@@ -87,6 +90,9 @@ router.patch("/:id", async (req, res) => {
     }
     if (editor !== undefined) {
         updateData.editor = editor || null;
+    }
+    if (useWorktrees !== undefined) {
+        updateData.useWorktrees = useWorktrees;
     }
     await index_js_1.db.update(schema_js_1.projects).set(updateData).where((0, drizzle_orm_1.eq)(schema_js_1.projects.id, id));
     res.json({ success: true });

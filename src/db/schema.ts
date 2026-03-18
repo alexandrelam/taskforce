@@ -13,6 +13,7 @@ export const projects = sqliteTable("projects", {
   postWorktreeCommand: text("post_worktree_command"),
   panes: text("panes"),
   editor: text("editor"),
+  useWorktrees: integer("use_worktrees", { mode: "boolean" }).notNull().default(true),
 });
 
 export const tickets = sqliteTable("tickets", {
@@ -31,4 +32,5 @@ export const tickets = sqliteTable("tickets", {
   description: text("description"),
   statusOverride: integer("status_override", { mode: "boolean" }),
   prLink: text("pr_link"),
+  prState: text("pr_state"),
 });

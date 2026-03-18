@@ -13,6 +13,7 @@ export const projectsApi = {
     name: string;
     path: string;
     postWorktreeCommand?: string | null;
+    useWorktrees?: boolean;
   }): Promise<Project> => {
     const res = await fetch(`${API_BASE}/api/projects`, {
       method: "POST",
@@ -28,6 +29,7 @@ export const projectsApi = {
       postWorktreeCommand?: string | null;
       editor?: string | null;
       panes?: Pane[];
+      useWorktrees?: boolean;
     }
   ): Promise<void> => {
     await fetch(`${API_BASE}/api/projects/${id}`, {

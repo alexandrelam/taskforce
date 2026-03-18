@@ -46,6 +46,7 @@ export function useTickets(selectedProjectId: string | null) {
                 description: ticket.description,
                 statusOverride: ticket.statusOverride,
                 prLink: ticket.prLink,
+                prState: ticket.prState ? JSON.parse(ticket.prState) : null,
               });
             }
           });

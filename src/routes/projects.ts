@@ -24,16 +24,18 @@ router.get("/", async (_req: Request, res: Response) => {
 });
 
 router.post("/", async (req: Request, res: Response) => {
-  const { name, path, postWorktreeCommand, panes, editor } = req.body as {
+  const { name, path, postWorktreeCommand, panes, editor, useWorktrees } = req.body as {
     name: string;
     path: string;
     postWorktreeCommand?: string;
     panes?: Pane[];
     editor?: string;
+    useWorktrees?: boolean;
   };
   const id = crypto.randomUUID();
   const createdAt = Date.now();
   const panesJson = panes ? JSON.stringify(panes) : null;
+  const worktreesEnabled = useWorktrees !== false;
   await db.insert(projects).values({
     id,
     name,
@@ -42,6 +44,7 @@ router.post("/", async (req: Request, res: Response) => {
     postWorktreeCommand: postWorktreeCommand ?? null,
     panes: panesJson,
     editor: editor ?? null,
+    useWorktrees: worktreesEnabled,
   });
 
   // Auto-create main ticket for the project
@@ -64,6 +67,7 @@ router.post("/", async (req: Request, res: Response) => {
     postWorktreeCommand: postWorktreeCommand ?? null,
     panes: panes ?? [],
     editor: editor ?? null,
+    useWorktrees: worktreesEnabled,
   });
 });
 
@@ -95,15 +99,17 @@ router.delete("/:id", async (req: Request<{ id: string }>, res: Response) => {
 
 router.patch("/:id", async (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
-  const { postWorktreeCommand, panes, editor } = req.body as {
+  const { postWorktreeCommand, panes, editor, useWorktrees } = req.body as {
     postWorktreeCommand?: string;
     panes?: Pane[];
     editor?: string | null;
+    useWorktrees?: boolean;
   };
   const updateData: {
     postWorktreeCommand?: string | null;
     panes?: string | null;
     editor?: string | null;
+    useWorktrees?: boolean;
   } = {};
 
   if (postWorktreeCommand !== undefined) {
@@ -114,6 +120,9 @@ router.patch("/:id", async (req: Request<{ id: string }>, res: Response) => {
   }
   if (editor !== undefined) {
     updateData.editor = editor || null;
+  }
+  if (useWorktrees !== undefined) {
+    updateData.useWorktrees = useWorktrees;
   }
 
   await db.update(projects).set(updateData).where(eq(projects.id, id));

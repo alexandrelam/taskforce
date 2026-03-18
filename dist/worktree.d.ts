@@ -19,9 +19,10 @@ interface WorktreeResult {
  * Create a git worktree for a ticket
  * @param projectPath - The path to the project (main git repo)
  * @param ticketSlug - The slugified ticket title
+ * @param baseBranch - Optional base branch to create from (defaults to current branch)
  * @returns The worktree path or error
  */
-export declare function createWorktree(projectPath: string, ticketSlug: string): WorktreeResult;
+export declare function createWorktree(projectPath: string, ticketSlug: string, baseBranch?: string): WorktreeResult;
 interface PostCommandResult {
     output: string | null;
     error: string | null;

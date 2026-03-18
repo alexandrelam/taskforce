@@ -3,6 +3,7 @@ import { Trash2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ interface ProjectCardProps {
   onSaveEditor: (projectId: string, editor: string) => void;
   onAddPane: (projectId: string, paneName: string) => Promise<boolean>;
   onRemovePane: (projectId: string, paneName: string) => void;
+  onToggleWorktrees: (projectId: string, enabled: boolean) => void;
   onDelete: (projectId: string) => void;
 }
 
@@ -43,6 +45,7 @@ export function ProjectCard({
   onSaveEditor,
   onAddPane,
   onRemovePane,
+  onToggleWorktrees,
   onDelete,
 }: ProjectCardProps) {
   const [newPaneName, setNewPaneName] = useState("");
@@ -111,6 +114,20 @@ export function ProjectCard({
             ))}
           </SelectContent>
         </Select>
+      </div>
+      <div className="border-t pt-2 mt-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-xs text-muted-foreground">Use worktrees</Label>
+            <p className="text-xs text-muted-foreground/70">
+              When disabled, tickets use branches only (no worktree directory)
+            </p>
+          </div>
+          <Switch
+            checked={project.useWorktrees !== false}
+            onCheckedChange={(checked) => onToggleWorktrees(project.id, checked)}
+          />
+        </div>
       </div>
       <div className="border-t pt-2 mt-2">
         <Label className="text-xs text-muted-foreground">Terminal Panes</Label>

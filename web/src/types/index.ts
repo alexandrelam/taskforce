@@ -12,6 +12,17 @@ export interface Project {
   panes: Pane[];
   editor: string | null;
   postWorktreeCommand?: string | null;
+  useWorktrees?: boolean;
+}
+
+export interface PrState {
+  state: "OPEN" | "CLOSED" | "MERGED";
+  mergeable: "MERGEABLE" | "CONFLICTING" | "UNKNOWN";
+  reviewDecision: "APPROVED" | "CHANGES_REQUESTED" | "REVIEW_REQUIRED" | "" | null;
+  checksStatus: "SUCCESS" | "FAILURE" | "PENDING" | null;
+  isDraft: boolean;
+  lastCheckedAt: number;
+  error?: string;
 }
 
 export type SetupStatus =
@@ -33,6 +44,7 @@ export interface Task {
   description?: string | null;
   statusOverride?: boolean | null;
   prLink?: string | null;
+  prState?: PrState | null;
 }
 
 export interface CommitInfo {
@@ -55,4 +67,5 @@ export interface TicketResponse {
   description?: string | null;
   statusOverride?: boolean | null;
   prLink?: string | null;
+  prState?: string | null;
 }

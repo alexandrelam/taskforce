@@ -2,15 +2,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 interface CreateProjectFormProps {
-  onSubmit: (name: string, path: string, command: string) => Promise<void>;
+  onSubmit: (name: string, path: string, command: string, useWorktrees: boolean) => Promise<void>;
 }
 
 export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
   const [name, setName] = useState("");
   const [path, setPath] = useState("");
   const [command, setCommand] = useState("");
+  const [useWorktrees, setUseWorktrees] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -19,10 +21,11 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
 
     setSaving(true);
     try {
-      await onSubmit(name.trim(), path.trim(), command.trim());
+      await onSubmit(name.trim(), path.trim(), command.trim(), useWorktrees);
       setName("");
       setPath("");
       setCommand("");
+      setUseWorktrees(true);
     } finally {
       setSaving(false);
     }
@@ -43,6 +46,15 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
           value={command}
           onChange={(e) => setCommand(e.target.value)}
         />
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-xs text-muted-foreground">Use worktrees</Label>
+            <p className="text-xs text-muted-foreground/70">
+              When disabled, tickets use branches only
+            </p>
+          </div>
+          <Switch checked={useWorktrees} onCheckedChange={setUseWorktrees} />
+        </div>
       </div>
       <div className="flex justify-end">
         <Button type="submit" disabled={saving || !name.trim() || !path.trim()}>

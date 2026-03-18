@@ -29,7 +29,7 @@
 
 - Node.js 24+
 - Git
-- tmux (optional, for persistent terminal sessions)
+- tmux (recommended - used for persistent terminal sessions and async post-worktree commands)
 
 ## Quick Start
 

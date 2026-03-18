@@ -14,6 +14,7 @@ exports.projects = (0, sqlite_core_1.sqliteTable)("projects", {
     postWorktreeCommand: (0, sqlite_core_1.text)("post_worktree_command"),
     panes: (0, sqlite_core_1.text)("panes"),
     editor: (0, sqlite_core_1.text)("editor"),
+    useWorktrees: (0, sqlite_core_1.integer)("use_worktrees", { mode: "boolean" }).notNull().default(true),
 });
 exports.tickets = (0, sqlite_core_1.sqliteTable)("tickets", {
     id: (0, sqlite_core_1.text)("id").primaryKey(),
@@ -30,5 +31,7 @@ exports.tickets = (0, sqlite_core_1.sqliteTable)("tickets", {
     setupTmuxSession: (0, sqlite_core_1.text)("setup_tmux_session"),
     description: (0, sqlite_core_1.text)("description"),
     statusOverride: (0, sqlite_core_1.integer)("status_override", { mode: "boolean" }),
+    prLink: (0, sqlite_core_1.text)("pr_link"),
+    prState: (0, sqlite_core_1.text)("pr_state"),
 });
 //# sourceMappingURL=schema.js.map

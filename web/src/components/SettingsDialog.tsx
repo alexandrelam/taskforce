@@ -26,7 +26,8 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 
-import { projectsApi } from "@/lib/api";
+import { Input } from "@/components/ui/input";
+import { projectsApi, settingsApi } from "@/lib/api";
 import { ProjectCard, CreateProjectForm } from "./settings";
 import type { Project } from "@/types";
 
@@ -47,6 +48,7 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [editingCommandId, setEditingCommandId] = useState<string | null>(null);
   const [editingCommandValue, setEditingCommandValue] = useState("");
+  const [prPollMinutes, setPrPollMinutes] = useState("2");
 
   const fetchProjects = async () => {
     const data = await projectsApi.getAll();
@@ -56,6 +58,11 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
   useEffect(() => {
     if (open) {
       fetchProjects();
+      settingsApi.get("prPollInterval").then(({ value }) => {
+        if (value) {
+          setPrPollMinutes(String(parseInt(value, 10) / 60000));
+        }
+      });
     }
   }, [open]);
 
@@ -93,11 +100,23 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
     onProjectsChange?.();
   };
 
-  const handleCreateProject = async (name: string, path: string, command: string) => {
+  const handleToggleWorktrees = async (projectId: string, enabled: boolean) => {
+    await projectsApi.update(projectId, { useWorktrees: enabled });
+    await fetchProjects();
+    onProjectsChange?.();
+  };
+
+  const handleCreateProject = async (
+    name: string,
+    path: string,
+    command: string,
+    useWorktrees: boolean
+  ) => {
     await projectsApi.create({
       name,
       path,
       postWorktreeCommand: command || null,
+      useWorktrees,
     });
     await fetchProjects();
     onProjectsChange?.();
@@ -163,10 +182,27 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
             <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
               {activeSection === "General" && (
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    General settings will appear here. Project-specific settings like post-worktree
-                    commands can be configured in the Projects section.
-                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="pr-poll-interval">PR status check interval (minutes)</Label>
+                    <Input
+                      id="pr-poll-interval"
+                      type="number"
+                      min="0.5"
+                      step="0.5"
+                      value={prPollMinutes}
+                      onChange={(e) => setPrPollMinutes(e.target.value)}
+                      onBlur={() => {
+                        const mins = Math.max(0.5, parseFloat(prPollMinutes) || 2);
+                        setPrPollMinutes(String(mins));
+                        settingsApi.set("prPollInterval", String(mins * 60000));
+                      }}
+                      className="w-32"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      How often to check GitHub PR status for tickets with a PR link. Minimum 0.5
+                      minutes.
+                    </p>
+                  </div>
                 </div>
               )}
               {activeSection === "Projects" && (
@@ -194,6 +230,7 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
                             onSaveEditor={handleSaveEditor}
                             onAddPane={handleAddPane}
                             onRemovePane={handleRemovePane}
+                            onToggleWorktrees={handleToggleWorktrees}
                             onDelete={handleDeleteProject}
                           />
                         ))}

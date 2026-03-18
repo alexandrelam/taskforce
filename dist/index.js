@@ -12,6 +12,7 @@ const settings_js_1 = __importDefault(require("./routes/settings.js"));
 const projects_js_1 = __importDefault(require("./routes/projects.js"));
 const tickets_js_1 = __importDefault(require("./routes/tickets.js"));
 const tracking_js_1 = __importDefault(require("./routes/tracking.js"));
+const pr_poller_js_1 = require("./pr-poller.js");
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 const port = process.env.PORT || 3325;
@@ -37,5 +38,6 @@ const server = (0, http_1.createServer)(app);
 (0, pty_js_1.setupPtyWebSocket)(server);
 server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
+    (0, pr_poller_js_1.startPrPoller)();
 });
 //# sourceMappingURL=index.js.map
