@@ -39,13 +39,18 @@ function getInterval(): number {
   return DEFAULT_INTERVAL;
 }
 
-function deriveChecksStatus(
-  statusCheckRollup: { conclusion: string; status: string }[] | null
-): string | null {
+function deriveChecksStatus(statusCheckRollup: Record<string, string>[] | null): string | null {
   if (!statusCheckRollup || statusCheckRollup.length === 0) return null;
   if (statusCheckRollup.some((c) => c.conclusion === "FAILURE" || c.conclusion === "ERROR"))
     return "FAILURE";
-  if (statusCheckRollup.some((c) => c.status !== "COMPLETED")) return "PENDING";
+  if (
+    statusCheckRollup.some((c) => {
+      if (c.status) return c.status !== "COMPLETED";
+      if (c.state) return c.state !== "SUCCESS";
+      return false;
+    })
+  )
+    return "PENDING";
   return "SUCCESS";
 }
 
