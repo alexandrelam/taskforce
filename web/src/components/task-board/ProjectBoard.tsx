@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Loader2, GitPullRequest, MoreVertical, Plus, GitBranch } from "lucide-react";
 import { usePrAutoFill } from "@/hooks/usePrAutoFill";
 import { toast } from "sonner";
@@ -21,6 +21,10 @@ import { useGitOperations } from "@/hooks/useGitOperations";
 import { usePrSuggestions, type PrSuggestion } from "@/hooks/usePrSuggestions";
 import { ticketsApi } from "@/lib/api";
 
+import { useStacks } from "@/hooks/useStacks";
+import { StackConnectorProvider } from "@/contexts/StackConnectorContext";
+import { StackConnectors } from "./StackConnectors";
+import { StackHeader } from "./StackHeader";
 import { TicketCard } from "./TicketCard";
 import { DeleteTicketDialog } from "./dialogs/DeleteTicketDialog";
 import { EditTicketDialog } from "./dialogs/EditTicketDialog";
@@ -312,6 +316,48 @@ export function ProjectBoard({
 
   const { commitInfo, isPulling, pull } = useGitOperations(project.id);
   const { suggestions, setSuggestions } = usePrSuggestions(project.id);
+  const { stacks, stackByTicketId, memberByTicketId } = useStacks(columns);
+
+  // Stack UI state
+  const [hoveredStackId, setHoveredStackId] = useState<string | null>(null);
+  const boardContainerRef = useRef<HTMLDivElement>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Build a task lookup map for StackHeader
+  const taskMap = useMemo(() => {
+    const map = new Map<string, Task>();
+    for (const tasks of Object.values(columns)) {
+      for (const t of tasks) {
+        map.set(t.id, t);
+      }
+    }
+    return map;
+  }, [columns]);
+
+  // Delayed hover: gives user time to move mouse to the StackHeader
+  const handleStackHover = useCallback(
+    (ticketId: string | null) => {
+      clearTimeout(hoverTimeoutRef.current);
+      if (!ticketId) {
+        hoverTimeoutRef.current = setTimeout(() => setHoveredStackId(null), 300);
+        return;
+      }
+      const stack = stackByTicketId.get(ticketId);
+      setHoveredStackId(stack?.id || null);
+    },
+    [stackByTicketId]
+  );
+
+  // Called by StackHeader to keep itself visible while hovered
+  const handleStackHeaderEnter = useCallback(() => {
+    clearTimeout(hoverTimeoutRef.current);
+  }, []);
+
+  const handleStackHeaderLeave = useCallback(() => {
+    hoverTimeoutRef.current = setTimeout(() => setHoveredStackId(null), 300);
+  }, []);
+
+  const hoveredStack = hoveredStackId ? stacks.find((s) => s.id === hoveredStackId) : null;
 
   // Local UI state
   const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
@@ -473,82 +519,109 @@ export function ProjectBoard({
       </div>
 
       {/* Kanban Board */}
-      <Kanban
-        value={columns}
-        onValueChange={wrappedHandleColumnsChange}
-        getItemValue={(item) => item.id}
-        sensors={sensors}
-      >
-        <KanbanBoard className="items-stretch min-h-[200px] h-full">
-          {COLUMN_ORDER.map((columnId) => {
-            const tasks = columns[columnId] || [];
-            return (
-              <KanbanColumn
-                key={columnId}
-                value={columnId}
-                className="flex-1 min-w-[220px] flex flex-col"
-              >
-                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border px-1">
-                  <span
-                    className={`w-2 h-2 rounded-full shrink-0 ${COLUMN_COLORS[columnId] ?? "bg-zinc-400"}`}
-                  />
-                  <span className="font-semibold text-muted-foreground text-sm">{columnId}</span>
-                  <span className="text-zinc-500 text-xs">{tasks.length}</span>
-                </div>
-                <div className="flex-1 overflow-y-auto flex flex-col gap-2">
-                  {columnId === "To Do" && suggestions.length > 0 && (
-                    <div className="mb-2 space-y-1">
-                      <p className="text-xs text-muted-foreground px-1">Quick starters</p>
-                      {suggestions.map((pr) => (
-                        <TicketStarter
-                          key={pr.url}
-                          pr={pr}
-                          projectId={project.id}
-                          onCreated={handleStarterCreated}
-                        />
-                      ))}
+      <StackConnectorProvider>
+        <div className="relative" ref={boardContainerRef}>
+          {hoveredStack && (
+            <StackHeader
+              stack={hoveredStack}
+              tasks={taskMap}
+              onResyncComplete={() => setHoveredStackId(null)}
+              onMouseEnter={handleStackHeaderEnter}
+              onMouseLeave={handleStackHeaderLeave}
+            />
+          )}
+          <StackConnectors
+            stacks={stacks}
+            hoveredStackId={hoveredStackId}
+            containerRef={boardContainerRef}
+          />
+          <Kanban
+            value={columns}
+            onValueChange={wrappedHandleColumnsChange}
+            getItemValue={(item) => item.id}
+            sensors={sensors}
+          >
+            <KanbanBoard className="items-stretch min-h-[200px] h-full">
+              {COLUMN_ORDER.map((columnId) => {
+                const tasks = columns[columnId] || [];
+                return (
+                  <KanbanColumn
+                    key={columnId}
+                    value={columnId}
+                    className="flex-1 min-w-[220px] flex flex-col"
+                  >
+                    <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border px-1">
+                      <span
+                        className={`w-2 h-2 rounded-full shrink-0 ${COLUMN_COLORS[columnId] ?? "bg-zinc-400"}`}
+                      />
+                      <span className="font-semibold text-muted-foreground text-sm">
+                        {columnId}
+                      </span>
+                      <span className="text-zinc-500 text-xs">{tasks.length}</span>
                     </div>
-                  )}
-                  {tasks.map((task) => (
-                    <TicketCard
-                      key={task.id}
-                      task={task}
-                      columnEnteredAt={columnEnteredAt[task.id]}
-                      hasEditor={!!project.editor}
-                      isDeleting={deletingTicketId === task.id}
-                      isSelected={selectedTaskId === task.id}
-                      onClick={() => onOpenTask(task, project.id)}
-                      onDelete={(e) => handleDeleteTicketClick(e, task)}
-                      onClearOverride={(e) => handleClearOverride(e, task.id)}
-                      onOpenEditor={(e) => handleOpenEditor(e, task.id)}
-                      onEditTicket={(e) => handleEditTicketClick(e, task)}
-                    />
-                  ))}
-                </div>
-              </KanbanColumn>
-            );
-          })}
-        </KanbanBoard>
-        <KanbanOverlay>
-          {({ value, variant }) => {
-            if (variant === "column") {
-              return (
-                <div className="w-72 p-3 bg-card rounded-lg border border-border opacity-90">
-                  {value}
-                </div>
-              );
-            }
-            const task = Object.values(columns)
-              .flat()
-              .find((t) => t.id === value);
-            return (
-              <div className="p-3 bg-card rounded-md border border-border opacity-90">
-                {task?.title}
-              </div>
-            );
-          }}
-        </KanbanOverlay>
-      </Kanban>
+                    <div className="flex-1 overflow-y-auto flex flex-col gap-2">
+                      {columnId === "To Do" && suggestions.length > 0 && (
+                        <div className="mb-2 space-y-1">
+                          <p className="text-xs text-muted-foreground px-1">Quick starters</p>
+                          {suggestions.map((pr) => (
+                            <TicketStarter
+                              key={pr.url}
+                              pr={pr}
+                              projectId={project.id}
+                              onCreated={handleStarterCreated}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {tasks.map((task) => {
+                        const member = memberByTicketId.get(task.id);
+                        const stack = stackByTicketId.get(task.id);
+                        return (
+                          <TicketCard
+                            key={task.id}
+                            task={task}
+                            columnEnteredAt={columnEnteredAt[task.id]}
+                            hasEditor={!!project.editor}
+                            isDeleting={deletingTicketId === task.id}
+                            isSelected={selectedTaskId === task.id}
+                            stackMember={member}
+                            isStackHighlighted={!!stack && hoveredStackId === stack.id}
+                            onStackHover={handleStackHover}
+                            onClick={() => onOpenTask(task, project.id)}
+                            onDelete={(e) => handleDeleteTicketClick(e, task)}
+                            onClearOverride={(e) => handleClearOverride(e, task.id)}
+                            onOpenEditor={(e) => handleOpenEditor(e, task.id)}
+                            onEditTicket={(e) => handleEditTicketClick(e, task)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </KanbanColumn>
+                );
+              })}
+            </KanbanBoard>
+            <KanbanOverlay>
+              {({ value, variant }) => {
+                if (variant === "column") {
+                  return (
+                    <div className="w-72 p-3 bg-card rounded-lg border border-border opacity-90">
+                      {value}
+                    </div>
+                  );
+                }
+                const task = Object.values(columns)
+                  .flat()
+                  .find((t) => t.id === value);
+                return (
+                  <div className="p-3 bg-card rounded-md border border-border opacity-90">
+                    {task?.title}
+                  </div>
+                );
+              }}
+            </KanbanOverlay>
+          </Kanban>
+        </div>
+      </StackConnectorProvider>
 
       {/* Delete Confirmation Dialog */}
       <DeleteTicketDialog

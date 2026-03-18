@@ -555,6 +555,135 @@ router.post("/:id/open-editor", async (req: Request<{ id: string }>, res: Respon
   }
 });
 
+// Resync a stack of PRs: cascade rebase + update GitHub base branches
+router.post("/resync-stack", async (req: Request, res: Response) => {
+  const { ticketIds } = req.body as { ticketIds: string[] };
+
+  if (!ticketIds || !Array.isArray(ticketIds) || ticketIds.length < 2) {
+    res.status(400).json({ error: "At least 2 ticket IDs required" });
+    return;
+  }
+
+  // Load all tickets with their project
+  const ticketRows = [];
+  for (const id of ticketIds) {
+    const row = await db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
+    if (!row[0]) {
+      res.status(404).json({ error: `Ticket ${id} not found` });
+      return;
+    }
+    ticketRows.push(row[0]);
+  }
+
+  // Get project path
+  const projectId = ticketRows[0]?.projectId;
+  if (!projectId) {
+    res.status(400).json({ error: "Tickets must belong to a project" });
+    return;
+  }
+
+  const project = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+  if (!project[0]?.path) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const results: Array<{ ticketId: string; success: boolean; error?: string }> = [];
+
+  for (let i = 0; i < ticketRows.length; i++) {
+    const ticket = ticketRows[i]!;
+    const prState = ticket.prState ? JSON.parse(ticket.prState) : null;
+
+    if (!prState?.headRefName || !ticket.prLink) {
+      results.push({ ticketId: ticket.id, success: false, error: "No PR data" });
+      break;
+    }
+
+    const worktreePath = ticket.worktreePath;
+    if (!worktreePath) {
+      results.push({ ticketId: ticket.id, success: false, error: "No worktree path" });
+      break;
+    }
+
+    // Determine the correct base branch
+    let targetBase: string;
+    if (i === 0) {
+      // Root ticket: rebase on its original base (e.g., main)
+      targetBase = prState.baseRefName || "main";
+    } else {
+      // Child tickets: rebase on parent's head branch
+      const parentRawState = ticketRows[i - 1]!.prState;
+      const parentPrState = parentRawState ? JSON.parse(parentRawState) : null;
+      targetBase = parentPrState?.headRefName || "main";
+    }
+
+    try {
+      // Fetch latest
+      execFileSync("git", ["fetch", "origin"], {
+        cwd: worktreePath,
+        timeout: 30000,
+        encoding: "utf-8",
+      });
+
+      // Rebase onto target base
+      execFileSync("git", ["rebase", `origin/${targetBase}`], {
+        cwd: worktreePath,
+        timeout: 60000,
+        encoding: "utf-8",
+      });
+
+      // Force push with lease
+      execFileSync("git", ["push", "--force-with-lease"], {
+        cwd: worktreePath,
+        timeout: 30000,
+        encoding: "utf-8",
+      });
+
+      // Check if PR base branch needs updating
+      if (ticket.prLink) {
+        try {
+          const prInfo = execFileSync(
+            "gh",
+            ["pr", "view", ticket.prLink, "--json", "baseRefName"],
+            { timeout: 10000, encoding: "utf-8" }
+          );
+          const currentBase = JSON.parse(prInfo).baseRefName;
+          if (currentBase !== targetBase) {
+            execFileSync("gh", ["pr", "edit", ticket.prLink, "--base", targetBase], {
+              timeout: 10000,
+              encoding: "utf-8",
+            });
+          }
+        } catch (ghErr) {
+          // Non-fatal: PR base update failed but rebase succeeded
+          console.warn(`Failed to update PR base for ${ticket.id}:`, ghErr);
+        }
+      }
+
+      results.push({ ticketId: ticket.id, success: true });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      results.push({ ticketId: ticket.id, success: false, error: errorMsg });
+
+      // Abort any in-progress rebase
+      try {
+        execFileSync("git", ["rebase", "--abort"], {
+          cwd: worktreePath,
+          timeout: 5000,
+          encoding: "utf-8",
+        });
+      } catch {
+        // ignore
+      }
+
+      // Stop cascade on failure
+      break;
+    }
+  }
+
+  res.json({ results });
+});
+
 // Get PR info from GitHub URL
 const PR_URL_REGEX = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
 
