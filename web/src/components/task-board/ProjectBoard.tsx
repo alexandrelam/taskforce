@@ -29,6 +29,12 @@ import type { Project, Task, Columns } from "@/types";
 
 const COLUMN_ORDER = ["To Do", "In Progress", "Done"];
 
+const COLUMN_COLORS: Record<string, string> = {
+  "To Do": "bg-zinc-400",
+  "In Progress": "bg-blue-500",
+  Done: "bg-green-500",
+};
+
 // Controlled dialog components for mobile menu
 interface ControlledCreateTicketDialogProps {
   open: boolean;
@@ -423,9 +429,9 @@ export function ProjectBoard({
   };
 
   return (
-    <div className="border rounded-lg p-4 pb-6 bg-card">
+    <div className="flex flex-col">
       {/* Per-Board Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="font-semibold shrink-0">{project.name}</h2>
           {commitInfo && (
@@ -467,22 +473,29 @@ export function ProjectBoard({
       </div>
 
       {/* Kanban Board */}
-      <div className="overflow-x-auto">
-        <Kanban
-          value={columns}
-          onValueChange={wrappedHandleColumnsChange}
-          getItemValue={(item) => item.id}
-          sensors={sensors}
-        >
-          <KanbanBoard className="items-stretch min-h-[200px]">
-            {COLUMN_ORDER.map((columnId) => {
-              const tasks = columns[columnId] || [];
-              return (
-                <KanbanColumn key={columnId} value={columnId} className="w-72 shrink-0 h-auto">
-                  <div className="font-semibold text-muted-foreground mb-2 px-1">
-                    {columnId}
-                    <span className="ml-2 text-zinc-500 text-sm">{tasks.length}</span>
-                  </div>
+      <Kanban
+        value={columns}
+        onValueChange={wrappedHandleColumnsChange}
+        getItemValue={(item) => item.id}
+        sensors={sensors}
+      >
+        <KanbanBoard className="items-stretch min-h-[200px] h-full">
+          {COLUMN_ORDER.map((columnId) => {
+            const tasks = columns[columnId] || [];
+            return (
+              <KanbanColumn
+                key={columnId}
+                value={columnId}
+                className="flex-1 min-w-[220px] flex flex-col"
+              >
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border px-1">
+                  <span
+                    className={`w-2 h-2 rounded-full shrink-0 ${COLUMN_COLORS[columnId] ?? "bg-zinc-400"}`}
+                  />
+                  <span className="font-semibold text-muted-foreground text-sm">{columnId}</span>
+                  <span className="text-zinc-500 text-xs">{tasks.length}</span>
+                </div>
+                <div className="flex-1 overflow-y-auto">
                   {columnId === "To Do" && suggestions.length > 0 && (
                     <div className="mb-2 space-y-1">
                       <p className="text-xs text-muted-foreground px-1">Quick starters</p>
@@ -511,31 +524,31 @@ export function ProjectBoard({
                       onEditTicket={(e) => handleEditTicketClick(e, task)}
                     />
                   ))}
-                </KanbanColumn>
-              );
-            })}
-          </KanbanBoard>
-          <KanbanOverlay>
-            {({ value, variant }) => {
-              if (variant === "column") {
-                return (
-                  <div className="w-72 p-3 bg-card rounded-lg border border-border opacity-90">
-                    {value}
-                  </div>
-                );
-              }
-              const task = Object.values(columns)
-                .flat()
-                .find((t) => t.id === value);
+                </div>
+              </KanbanColumn>
+            );
+          })}
+        </KanbanBoard>
+        <KanbanOverlay>
+          {({ value, variant }) => {
+            if (variant === "column") {
               return (
-                <div className="p-3 bg-card rounded-md border border-border opacity-90">
-                  {task?.title}
+                <div className="w-72 p-3 bg-card rounded-lg border border-border opacity-90">
+                  {value}
                 </div>
               );
-            }}
-          </KanbanOverlay>
-        </Kanban>
-      </div>
+            }
+            const task = Object.values(columns)
+              .flat()
+              .find((t) => t.id === value);
+            return (
+              <div className="p-3 bg-card rounded-md border border-border opacity-90">
+                {task?.title}
+              </div>
+            );
+          }}
+        </KanbanOverlay>
+      </Kanban>
 
       {/* Delete Confirmation Dialog */}
       <DeleteTicketDialog

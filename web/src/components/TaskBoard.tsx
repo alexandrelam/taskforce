@@ -78,21 +78,22 @@ export function TaskBoard() {
         />
 
         {/* Stacked Boards */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 flex flex-col overflow-y-auto px-6 pt-4">
           {selectedProjects.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
               <p className="text-lg mb-2">No projects selected</p>
               <p className="text-sm">Select up to 3 projects from the dropdown above</p>
             </div>
           ) : (
-            selectedProjects.map((project) => (
-              <ProjectBoard
-                key={project.id}
-                project={project}
-                onOpenTask={openTask}
-                onColumnsChange={(columns) => handleColumnsChange(project.id, columns)}
-                selectedTaskId={selectedTask?.id ?? null}
-              />
+            selectedProjects.map((project, index) => (
+              <div key={project.id} className={index > 0 ? "border-t border-border pt-4 mt-4" : ""}>
+                <ProjectBoard
+                  project={project}
+                  onOpenTask={openTask}
+                  onColumnsChange={(columns) => handleColumnsChange(project.id, columns)}
+                  selectedTaskId={selectedTask?.id ?? null}
+                />
+              </div>
             ))
           )}
         </div>
