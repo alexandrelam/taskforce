@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { eq } from "drizzle-orm";
-import { execSync } from "child_process";
+import { execSync, execFileSync } from "child_process";
 import { db } from "../db/index.js";
 import { projects, tickets } from "../db/schema.js";
 import { killTmuxSession } from "../pty.js";
@@ -172,6 +172,60 @@ router.post("/:id/pull", async (req: Request<{ id: string }>, res: Response) => 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: errorMessage });
+  }
+});
+
+// PR Suggestions API
+router.get("/:id/pr-suggestions", async (req: Request<{ id: string }>, res: Response) => {
+  const { id } = req.params;
+
+  const project = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+  if (!project[0]) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  try {
+    const output = execFileSync(
+      "gh",
+      [
+        "pr",
+        "list",
+        "--author",
+        "@me",
+        "--state",
+        "open",
+        "--json",
+        "title,url,headRefName,number,createdAt",
+        "--limit",
+        "20",
+      ],
+      { cwd: project[0].path, timeout: 10000 }
+    );
+    const prs = JSON.parse(output.toString()) as Array<{
+      title: string;
+      url: string;
+      headRefName: string;
+      number: number;
+      createdAt: string;
+    }>;
+
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const recent = prs.filter((pr) => new Date(pr.createdAt).getTime() >= cutoff);
+
+    const existingTickets = await db
+      .select({ prLink: tickets.prLink })
+      .from(tickets)
+      .where(eq(tickets.projectId, id));
+    const existingLinks = new Set(existingTickets.map((t) => t.prLink).filter(Boolean));
+
+    const suggestions = recent
+      .filter((pr) => !existingLinks.has(pr.url))
+      .map(({ title, url, headRefName, number }) => ({ title, url, headRefName, number }));
+
+    res.json(suggestions);
+  } catch {
+    res.json([]);
   }
 });
 

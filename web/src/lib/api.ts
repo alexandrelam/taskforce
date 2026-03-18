@@ -57,6 +57,14 @@ export const projectsApi = {
     });
     return res.json();
   },
+
+  getPrSuggestions: async (
+    projectId: string
+  ): Promise<Array<{ title: string; url: string; headRefName: string; number: number }>> => {
+    const res = await fetch(`${API_BASE}/api/projects/${projectId}/pr-suggestions`);
+    if (!res.ok) return [];
+    return res.json();
+  },
 };
 
 // Tickets API

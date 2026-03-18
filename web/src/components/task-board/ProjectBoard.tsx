@@ -18,6 +18,7 @@ import { MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 
 import { useTickets } from "@/hooks/useTickets";
 import { useGitOperations } from "@/hooks/useGitOperations";
+import { usePrSuggestions, type PrSuggestion } from "@/hooks/usePrSuggestions";
 import { ticketsApi } from "@/lib/api";
 
 import { TicketCard } from "./TicketCard";
@@ -235,6 +236,51 @@ function ControlledOpenBranchDialog({
   );
 }
 
+interface TicketStarterProps {
+  pr: PrSuggestion;
+  projectId: string;
+  onCreated: (url: string) => void;
+}
+
+function TicketStarter({ pr, projectId, onCreated }: TicketStarterProps) {
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleClick = async () => {
+    if (isCreating) return;
+    setIsCreating(true);
+    try {
+      await ticketsApi.create({
+        title: pr.title,
+        prLink: pr.url,
+        projectId,
+        baseBranch: pr.headRefName,
+      });
+      onCreated(pr.url);
+    } catch (error) {
+      console.error("Failed to create ticket from PR:", error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={isCreating}
+      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md border border-dashed border-border bg-muted/40 hover:bg-muted/70 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {isCreating ? (
+        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+      ) : (
+        <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      )}
+      <span className="text-xs text-muted-foreground truncate">
+        #{pr.number} · {pr.title}
+      </span>
+    </button>
+  );
+}
+
 interface ProjectBoardProps {
   project: Project;
   onOpenTask: (task: Task, projectId: string) => void;
@@ -259,6 +305,7 @@ export function ProjectBoard({
   } = useTickets(project.id);
 
   const { commitInfo, isPulling, pull } = useGitOperations(project.id);
+  const { suggestions, setSuggestions } = usePrSuggestions(project.id);
 
   // Local UI state
   const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
@@ -348,6 +395,10 @@ export function ProjectBoard({
     }
   };
 
+  const handleStarterCreated = (url: string) => {
+    setSuggestions((prev) => prev.filter((s) => s.url !== url));
+  };
+
   const handleEditTicketClick = (e: React.MouseEvent, task: Task) => {
     e.stopPropagation();
     setTicketToEdit(task);
@@ -432,6 +483,19 @@ export function ProjectBoard({
                     {columnId}
                     <span className="ml-2 text-zinc-500 text-sm">{tasks.length}</span>
                   </div>
+                  {columnId === "To Do" && suggestions.length > 0 && (
+                    <div className="mb-2 space-y-1">
+                      <p className="text-xs text-muted-foreground px-1">Quick starters</p>
+                      {suggestions.map((pr) => (
+                        <TicketStarter
+                          key={pr.url}
+                          pr={pr}
+                          projectId={project.id}
+                          onCreated={handleStarterCreated}
+                        />
+                      ))}
+                    </div>
+                  )}
                   {tasks.map((task) => (
                     <TicketCard
                       key={task.id}
