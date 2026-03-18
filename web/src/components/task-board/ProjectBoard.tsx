@@ -495,7 +495,7 @@ export function ProjectBoard({
                   <span className="font-semibold text-muted-foreground text-sm">{columnId}</span>
                   <span className="text-zinc-500 text-xs">{tasks.length}</span>
                 </div>
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto flex flex-col gap-2">
                   {columnId === "To Do" && suggestions.length > 0 && (
                     <div className="mb-2 space-y-1">
                       <p className="text-xs text-muted-foreground px-1">Quick starters</p>
