@@ -132,6 +132,12 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@keyframes claude-border-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

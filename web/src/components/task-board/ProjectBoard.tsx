@@ -580,6 +580,7 @@ export function ProjectBoard({
                           <TicketCard
                             key={task.id}
                             task={task}
+                            columnId={columnId}
                             columnEnteredAt={columnEnteredAt[task.id]}
                             hasEditor={!!project.editor}
                             isDeleting={deletingTicketId === task.id}
