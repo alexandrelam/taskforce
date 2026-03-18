@@ -209,6 +209,8 @@ router.post("/:id/open-editor", async (req: Request<{ id: string }>, res: Respon
   res.json({ success: true });
 });
 
+
+// Get PR info from GitHub URL
 const PR_URL_REGEX = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
 
 router.get("/pr-info", async (req: Request, res: Response) => {

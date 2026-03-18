@@ -186,6 +186,21 @@ export const ticketsApi = {
     });
   },
 
+  resyncStack: async (
+    ticketIds: string[]
+  ): Promise<{ results: Array<{ ticketId: string; success: boolean; error?: string }> }> => {
+    const res = await fetch(`${API_BASE}/api/tickets/resync-stack`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketIds }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Resync failed");
+    }
+    return res.json();
+  },
+
   getPrInfo: async (url: string): Promise<{ title: string; headRefName: string }> => {
     return fetchJson<{ title: string; headRefName: string }>(
       `/api/tickets/pr-info?url=${encodeURIComponent(url)}`

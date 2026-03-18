@@ -21,6 +21,8 @@ export interface PrState {
   reviewDecision: "APPROVED" | "CHANGES_REQUESTED" | "REVIEW_REQUIRED" | "" | null;
   checksStatus: "SUCCESS" | "FAILURE" | "PENDING" | null;
   isDraft: boolean;
+  headRefName?: string | null;
+  baseRefName?: string | null;
   lastCheckedAt: number;
   error?: string;
 }
