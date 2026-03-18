@@ -124,6 +124,15 @@ export const ticketsApi = {
     });
     return res.json();
   },
+
+  getPrInfo: async (url: string): Promise<{ title: string; headRefName: string }> => {
+    const res = await fetch(`${API_BASE}/api/tickets/pr-info?url=${encodeURIComponent(url)}`);
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Failed to fetch PR info");
+    }
+    return res.json();
+  },
 };
 
 // Settings API

@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { usePrAutoFill } from "@/hooks/usePrAutoFill";
 
 interface CreateTicketDialogProps {
   disabled?: boolean;
@@ -36,6 +37,12 @@ export function CreateTicketDialog({
   const [baseBranch, setBaseBranch] = useState("");
   const [runPostCommand, setRunPostCommand] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const { isFetchingPr, handlePrLinkPaste } = usePrAutoFill({
+    title,
+    baseBranch,
+    setTitle,
+    setBaseBranch,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,11 +92,17 @@ export function CreateTicketDialog({
             onChange={(e) => setDescription(e.target.value)}
             className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
           />
-          <Input
-            placeholder="PR link (optional, e.g., https://github.com/...)"
-            value={prLink}
-            onChange={(e) => setPrLink(e.target.value)}
-          />
+          <div className="relative">
+            <Input
+              placeholder="PR link (optional, e.g., https://github.com/...)"
+              value={prLink}
+              onChange={(e) => setPrLink(e.target.value)}
+              onPaste={handlePrLinkPaste}
+            />
+            {isFetchingPr && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
           <Input
             placeholder="Base branch (optional, defaults to current branch)"
             value={baseBranch}

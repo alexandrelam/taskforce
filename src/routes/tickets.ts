@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { eq } from "drizzle-orm";
-import { spawn } from "child_process";
+import { spawn, execFileSync } from "child_process";
 import { db } from "../db/index.js";
 import { projects, tickets } from "../db/schema.js";
 import { killTmuxSession } from "../pty.js";
@@ -552,6 +552,30 @@ router.post("/:id/open-editor", async (req: Request<{ id: string }>, res: Respon
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error(`[open-editor] Failed to launch editor: ${errorMessage}`);
     res.status(500).json({ success: false, error: `Failed to launch editor: ${errorMessage}` });
+  }
+});
+
+// Get PR info from GitHub URL
+const PR_URL_REGEX = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
+
+router.get("/pr-info", async (req: Request, res: Response) => {
+  const url = req.query.url as string | undefined;
+
+  if (!url || !PR_URL_REGEX.test(url)) {
+    res.status(400).json({ error: "Invalid GitHub PR URL" });
+    return;
+  }
+
+  try {
+    const output = execFileSync("gh", ["pr", "view", url, "--json", "title,headRefName"], {
+      timeout: 10000,
+      encoding: "utf-8",
+    });
+    const data = JSON.parse(output) as { title: string; headRefName: string };
+    res.json({ title: data.title, headRefName: data.headRefName });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to fetch PR info";
+    res.status(500).json({ error: message });
   }
 });
 
