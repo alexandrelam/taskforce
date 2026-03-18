@@ -13,7 +13,7 @@ import { formatElapsedTime } from "@/hooks/useTimer";
 import type { Task, PrState } from "@/types";
 import { Ripple } from "@/components/ui/ripple";
 
-function getPrStatusDisplay(
+function getPrReviewDisplay(
   pr: PrState
 ): { color: string; dotClass: string; label: string } | null {
   if (pr.error) return null;
@@ -23,23 +23,25 @@ function getPrStatusDisplay(
     return { color: "text-muted-foreground", dotClass: "bg-muted-foreground", label: "Closed" };
   if (pr.isDraft)
     return { color: "text-muted-foreground", dotClass: "bg-muted-foreground", label: "Draft" };
+  if (pr.reviewDecision === "CHANGES_REQUESTED")
+    return { color: "text-orange-500", dotClass: "bg-orange-500", label: "Changes requested" };
+  if (pr.reviewDecision === "APPROVED")
+    return { color: "text-green-500", dotClass: "bg-green-500", label: "Approved" };
+  return { color: "text-blue-500", dotClass: "bg-blue-500", label: "Review required" };
+}
+
+function getPrCiDisplay(pr: PrState): { color: string; dotClass: string; label: string } | null {
+  if (pr.error) return null;
+  if (pr.state === "MERGED" || pr.state === "CLOSED") return null;
   if (pr.mergeable === "CONFLICTING")
     return { color: "text-red-500", dotClass: "bg-red-500", label: "Conflicts" };
   if (pr.checksStatus === "FAILURE")
     return { color: "text-red-500", dotClass: "bg-red-500", label: "Checks failing" };
   if (pr.checksStatus === "PENDING")
     return { color: "text-yellow-500", dotClass: "bg-yellow-500", label: "Checks running" };
-  if (pr.reviewDecision === "CHANGES_REQUESTED")
-    return { color: "text-orange-500", dotClass: "bg-orange-500", label: "Changes requested" };
-  if (pr.reviewDecision === "REVIEW_REQUIRED")
-    return { color: "text-blue-500", dotClass: "bg-blue-500", label: "Review required" };
-  if (
-    pr.reviewDecision === "APPROVED" &&
-    pr.checksStatus === "SUCCESS" &&
-    pr.mergeable === "MERGEABLE"
-  )
-    return { color: "text-green-500", dotClass: "bg-green-500", label: "Ready to merge" };
-  return { color: "text-blue-500", dotClass: "bg-blue-500", label: "Open" };
+  if (pr.checksStatus === "SUCCESS")
+    return { color: "text-green-500", dotClass: "bg-green-500", label: "Checks passing" };
+  return null;
 }
 
 interface TicketCardProps {
@@ -73,7 +75,8 @@ export function TicketCard({
     task.setupStatus === "running_post_command";
   const isSetupFailed = task.setupStatus === "failed";
   const hasOverride = task.statusOverride === true;
-  const prStatus = task.prState ? getPrStatusDisplay(task.prState) : null;
+  const prReview = task.prState ? getPrReviewDisplay(task.prState) : null;
+  const prCi = task.prState ? getPrCiDisplay(task.prState) : null;
 
   const getStatusText = () => {
     switch (task.setupStatus) {
@@ -127,8 +130,8 @@ export function TicketCard({
           {task.prLink && (
             <button
               onClick={handlePRClick}
-              className={`p-1 transition-opacity ${prStatus ? `${prStatus.color}` : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary"}`}
-              title={prStatus ? prStatus.label : "Open PR"}
+              className={`p-1 transition-opacity ${prReview ? `${prReview.color}` : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary"}`}
+              title={[prReview?.label, prCi?.label].filter(Boolean).join(" · ") || "Open PR"}
             >
               <GitPullRequest className="h-3.5 w-3.5" />
             </button>
@@ -196,10 +199,20 @@ export function TicketCard({
       {task.description && (
         <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</div>
       )}
-      {prStatus && (
-        <div className={`flex items-center gap-1.5 text-xs mt-1 ${prStatus.color}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${prStatus.dotClass}`} />
-          {prStatus.label}
+      {(prReview || prCi) && (
+        <div className="flex items-center gap-3 mt-1">
+          {prReview && (
+            <div className={`flex items-center gap-1.5 text-xs ${prReview.color}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${prReview.dotClass}`} />
+              {prReview.label}
+            </div>
+          )}
+          {prCi && (
+            <div className={`flex items-center gap-1.5 text-xs ${prCi.color}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${prCi.dotClass}`} />
+              {prCi.label}
+            </div>
+          )}
         </div>
       )}
       {isSetupInProgress && (
