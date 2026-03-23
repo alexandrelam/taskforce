@@ -104,7 +104,6 @@ export function OpenBranchDialog({ disabled, hasPostCommand, onSubmit }: OpenBra
             placeholder="Branch name (e.g., feature-x or origin/feature-x)"
             value={state.branchName}
             onChange={(e) => dispatch({ type: "setBranchName", value: e.target.value })}
-            autoFocus
           />
           <textarea
             placeholder="Description (optional)"

@@ -136,7 +136,6 @@ export function CreateTicketDialog({
             placeholder="Ticket title"
             value={state.title}
             onChange={(e) => dispatch({ type: "setTitle", value: e.target.value })}
-            autoFocus
           />
           <textarea
             placeholder="Description (optional)"

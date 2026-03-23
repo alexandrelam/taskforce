@@ -150,7 +150,6 @@ function ControlledCreateTicketDialog({
             placeholder="Ticket title"
             value={state.title}
             onChange={(e) => dispatch({ type: "setTitle", value: e.target.value })}
-            autoFocus
           />
           <textarea
             placeholder="Description (optional)"
@@ -292,7 +291,6 @@ function ControlledOpenBranchDialog({
             placeholder="Branch name (e.g., feature-x or origin/feature-x)"
             value={state.branchName}
             onChange={(e) => dispatch({ type: "setBranchName", value: e.target.value })}
-            autoFocus
           />
           <textarea
             placeholder="Description (optional)"
@@ -410,6 +408,8 @@ interface ProjectBoardUiState {
   deletingTicketId: string | null;
   ticketToDelete: Task | null;
   ticketToEdit: Task | null;
+  ticketEditDescription: string;
+  ticketEditPrLink: string;
   createTicketOpen: boolean;
   openBranchOpen: boolean;
 }
@@ -417,7 +417,10 @@ interface ProjectBoardUiState {
 type ProjectBoardUiAction =
   | { type: "setDeletingTicketId"; ticketId: string | null }
   | { type: "setTicketToDelete"; ticket: Task | null }
-  | { type: "setTicketToEdit"; ticket: Task | null }
+  | { type: "openEditTicket"; ticket: Task }
+  | { type: "closeEditTicket" }
+  | { type: "setTicketEditDescription"; value: string }
+  | { type: "setTicketEditPrLink"; value: string }
   | { type: "setCreateTicketOpen"; open: boolean }
   | { type: "setOpenBranchOpen"; open: boolean };
 
@@ -425,6 +428,8 @@ const initialProjectBoardUiState: ProjectBoardUiState = {
   deletingTicketId: null,
   ticketToDelete: null,
   ticketToEdit: null,
+  ticketEditDescription: "",
+  ticketEditPrLink: "",
   createTicketOpen: false,
   openBranchOpen: false,
 };
@@ -438,8 +443,24 @@ function projectBoardUiReducer(
       return { ...state, deletingTicketId: action.ticketId };
     case "setTicketToDelete":
       return { ...state, ticketToDelete: action.ticket };
-    case "setTicketToEdit":
-      return { ...state, ticketToEdit: action.ticket };
+    case "openEditTicket":
+      return {
+        ...state,
+        ticketToEdit: action.ticket,
+        ticketEditDescription: action.ticket.description || "",
+        ticketEditPrLink: action.ticket.prLink || "",
+      };
+    case "closeEditTicket":
+      return {
+        ...state,
+        ticketToEdit: null,
+        ticketEditDescription: "",
+        ticketEditPrLink: "",
+      };
+    case "setTicketEditDescription":
+      return { ...state, ticketEditDescription: action.value };
+    case "setTicketEditPrLink":
+      return { ...state, ticketEditPrLink: action.value };
     case "setCreateTicketOpen":
       return { ...state, createTicketOpen: action.open };
     case "setOpenBranchOpen":
@@ -544,7 +565,7 @@ export function ProjectBoard({
 
   const handleEditTicketClick = (e: React.MouseEvent, task: Task) => {
     e.stopPropagation();
-    dispatch({ type: "setTicketToEdit", ticket: task });
+    dispatch({ type: "openEditTicket", ticket: task });
   };
 
   const handleConfirmEdit = async (description: string, prLink: string) => {
@@ -555,7 +576,7 @@ export function ProjectBoard({
         description: description || null,
         prLink: prLink || null,
       });
-      dispatch({ type: "setTicketToEdit", ticket: null });
+      dispatch({ type: "closeEditTicket" });
       // Polling will refresh the data automatically
     } catch (error) {
       console.error("Failed to update ticket:", error);
@@ -701,8 +722,12 @@ export function ProjectBoard({
       {/* Edit Ticket Dialog */}
       <EditTicketDialog
         task={uiState.ticketToEdit}
+        description={uiState.ticketEditDescription}
+        prLink={uiState.ticketEditPrLink}
+        onDescriptionChange={(value) => dispatch({ type: "setTicketEditDescription", value })}
+        onPrLinkChange={(value) => dispatch({ type: "setTicketEditPrLink", value })}
         onSubmit={handleConfirmEdit}
-        onCancel={() => dispatch({ type: "setTicketToEdit", ticket: null })}
+        onCancel={() => dispatch({ type: "closeEditTicket" })}
       />
 
       {/* Controlled dialogs for mobile menu */}

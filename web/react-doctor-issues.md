@@ -24,15 +24,15 @@ Summary:
 ## Effects Used As Event Handlers
 
 - [x] Move `useEffect` event-like logic in `src/components/SettingsDialog.tsx:58` into the actual event handler.
-- [ ] Move `useEffect` event-like logic in `src/components/task-board/dialogs/EditTicketDialog.tsx:20` into the actual event handler.
+- [x] Move `useEffect` event-like logic in `src/components/task-board/dialogs/EditTicketDialog.tsx:20` into the actual event handler.
 
 ## Accessibility
 
-- [ ] Remove `autoFocus` from `src/components/task-board/dialogs/EditTicketDialog.tsx:63`.
-- [ ] Remove `autoFocus` from `src/components/task-board/ProjectBoard.tsx:105`.
-- [ ] Remove `autoFocus` from `src/components/task-board/ProjectBoard.tsx:205`.
-- [ ] Remove `autoFocus` from `src/components/task-board/dialogs/OpenBranchDialog.tsx:61`.
-- [ ] Remove `autoFocus` from `src/components/task-board/dialogs/CreateTicketDialog.tsx:87`.
+- [x] Remove `autoFocus` from `src/components/task-board/dialogs/EditTicketDialog.tsx:63`.
+- [x] Remove `autoFocus` from `src/components/task-board/ProjectBoard.tsx:105`.
+- [x] Remove `autoFocus` from `src/components/task-board/ProjectBoard.tsx:205`.
+- [x] Remove `autoFocus` from `src/components/task-board/dialogs/OpenBranchDialog.tsx:61`.
+- [x] Remove `autoFocus` from `src/components/task-board/dialogs/CreateTicketDialog.tsx:87`.
 
 ## Correctness
 
