@@ -250,7 +250,10 @@ describe("tickets routes", () => {
         setupStatus: "pending",
       })
     );
-    expect(context.setupService.createBranchWorktree).toHaveBeenCalledWith("/repo/app", "feature-x");
+    expect(context.setupService.createBranchWorktree).toHaveBeenCalledWith(
+      "/repo/app",
+      "feature-x"
+    );
     expect(context.setupService.runTicketSetup).toHaveBeenCalledWith("ticket-1", create, null);
   });
 

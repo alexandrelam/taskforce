@@ -38,7 +38,11 @@ describe("editor service", () => {
   it("rejects missing editor configuration and unknown editors", async () => {
     const missingEditor = await loadService();
     missingEditor.getTicketById.mockResolvedValue({ id: "ticket-1", projectId: "project-1" });
-    missingEditor.getProjectById.mockResolvedValue({ id: "project-1", path: "/repo/app", editor: null });
+    missingEditor.getProjectById.mockResolvedValue({
+      id: "project-1",
+      path: "/repo/app",
+      editor: null,
+    });
 
     await expect(missingEditor.mod.openEditorForTicket("ticket-1")).resolves.toEqual({
       success: false,
@@ -76,7 +80,9 @@ describe("editor service", () => {
       editor: "cursor",
     });
 
-    await expect(mainTicket.mod.openEditorForTicket("ticket-1")).resolves.toEqual({ success: true });
+    await expect(mainTicket.mod.openEditorForTicket("ticket-1")).resolves.toEqual({
+      success: true,
+    });
     expect(mainTicket.spawn).toHaveBeenCalledWith("cursor", ["/repo/app"], {
       detached: true,
       stdio: "ignore",

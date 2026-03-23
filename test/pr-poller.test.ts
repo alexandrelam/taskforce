@@ -70,17 +70,15 @@ describe("pr poller", () => {
       settingsRows: [{ value: "45000" }],
       ticketRows: [{ id: "ticket-1", prLink: "https://github.com/acme/app/pull/1", prState: null }],
     });
-    execSync
-      .mockReturnValueOnce("")
-      .mockReturnValueOnce(
-        JSON.stringify({
-          state: "OPEN",
-          mergeable: "MERGEABLE",
-          reviewDecision: "APPROVED",
-          statusCheckRollup: [{ conclusion: "SUCCESS" }],
-          isDraft: false,
-        })
-      );
+    execSync.mockReturnValueOnce("").mockReturnValueOnce(
+      JSON.stringify({
+        state: "OPEN",
+        mergeable: "MERGEABLE",
+        reviewDecision: "APPROVED",
+        statusCheckRollup: [{ conclusion: "SUCCESS" }],
+        isDraft: false,
+      })
+    );
     const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
     mod.startPrPoller();
@@ -119,17 +117,15 @@ describe("pr poller", () => {
         },
       ],
     });
-    execSync
-      .mockReturnValueOnce("")
-      .mockReturnValueOnce(
-        JSON.stringify({
-          state: "OPEN",
-          mergeable: "MERGEABLE",
-          reviewDecision: null,
-          statusCheckRollup: [{ status: "IN_PROGRESS" }],
-          isDraft: false,
-        })
-      );
+    execSync.mockReturnValueOnce("").mockReturnValueOnce(
+      JSON.stringify({
+        state: "OPEN",
+        mergeable: "MERGEABLE",
+        reviewDecision: null,
+        statusCheckRollup: [{ status: "IN_PROGRESS" }],
+        isDraft: false,
+      })
+    );
 
     mod.startPrPoller();
 
@@ -144,11 +140,9 @@ describe("pr poller", () => {
     const { mod, execSync, db } = await loadPoller({
       ticketRows: [{ id: "ticket-1", prLink: "https://github.com/acme/app/pull/1", prState: null }],
     });
-    execSync
-      .mockReturnValueOnce("")
-      .mockImplementationOnce(() => {
-        throw new Error("gh failed");
-      });
+    execSync.mockReturnValueOnce("").mockImplementationOnce(() => {
+      throw new Error("gh failed");
+    });
 
     mod.startPrPoller();
 
@@ -162,17 +156,15 @@ describe("pr poller", () => {
     const failure = await loadPoller({
       ticketRows: [{ id: "ticket-1", prLink: "https://github.com/acme/app/pull/1", prState: null }],
     });
-    failure.execSync
-      .mockReturnValueOnce("")
-      .mockReturnValueOnce(
-        JSON.stringify({
-          state: "OPEN",
-          mergeable: "MERGEABLE",
-          reviewDecision: null,
-          statusCheckRollup: [{ conclusion: "FAILURE" }],
-          isDraft: false,
-        })
-      );
+    failure.execSync.mockReturnValueOnce("").mockReturnValueOnce(
+      JSON.stringify({
+        state: "OPEN",
+        mergeable: "MERGEABLE",
+        reviewDecision: null,
+        statusCheckRollup: [{ conclusion: "FAILURE" }],
+        isDraft: false,
+      })
+    );
     failure.mod.startPrPoller();
     let set = failure.db.update.mock.results[0].value.set as ReturnType<typeof vi.fn>;
     expect(set).toHaveBeenCalledWith({
@@ -183,17 +175,15 @@ describe("pr poller", () => {
     const pending = await loadPoller({
       ticketRows: [{ id: "ticket-1", prLink: "https://github.com/acme/app/pull/1", prState: null }],
     });
-    pending.execSync
-      .mockReturnValueOnce("")
-      .mockReturnValueOnce(
-        JSON.stringify({
-          state: "OPEN",
-          mergeable: "MERGEABLE",
-          reviewDecision: null,
-          statusCheckRollup: [{ status: "IN_PROGRESS" }],
-          isDraft: false,
-        })
-      );
+    pending.execSync.mockReturnValueOnce("").mockReturnValueOnce(
+      JSON.stringify({
+        state: "OPEN",
+        mergeable: "MERGEABLE",
+        reviewDecision: null,
+        statusCheckRollup: [{ status: "IN_PROGRESS" }],
+        isDraft: false,
+      })
+    );
     pending.mod.startPrPoller();
     set = pending.db.update.mock.results[0].value.set as ReturnType<typeof vi.fn>;
     expect(set).toHaveBeenCalledWith({
@@ -204,17 +194,15 @@ describe("pr poller", () => {
     const success = await loadPoller({
       ticketRows: [{ id: "ticket-1", prLink: "https://github.com/acme/app/pull/1", prState: null }],
     });
-    success.execSync
-      .mockReturnValueOnce("")
-      .mockReturnValueOnce(
-        JSON.stringify({
-          state: "OPEN",
-          mergeable: "MERGEABLE",
-          reviewDecision: null,
-          statusCheckRollup: [{ state: "SUCCESS" }],
-          isDraft: false,
-        })
-      );
+    success.execSync.mockReturnValueOnce("").mockReturnValueOnce(
+      JSON.stringify({
+        state: "OPEN",
+        mergeable: "MERGEABLE",
+        reviewDecision: null,
+        statusCheckRollup: [{ state: "SUCCESS" }],
+        isDraft: false,
+      })
+    );
     success.mod.startPrPoller();
     set = success.db.update.mock.results[0].value.set as ReturnType<typeof vi.fn>;
     expect(set).toHaveBeenCalledWith({

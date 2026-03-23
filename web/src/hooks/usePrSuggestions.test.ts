@@ -32,10 +32,9 @@ describe("usePrSuggestions", () => {
   });
 
   it("fetches suggestions on mount and when the project changes", async () => {
-    const { result, rerender } = renderHook(
-      ({ projectId }) => usePrSuggestions(projectId),
-      { initialProps: { projectId: "project-1" } }
-    );
+    const { result, rerender } = renderHook(({ projectId }) => usePrSuggestions(projectId), {
+      initialProps: { projectId: "project-1" },
+    });
 
     await waitFor(() => {
       expect(result.current.suggestions).toHaveLength(1);
