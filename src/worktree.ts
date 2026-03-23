@@ -18,10 +18,7 @@ export function slugify(title: string): string {
     .slice(0, 50); // Limit length
 }
 
-/**
- * Get the current git branch for a directory
- */
-export function getCurrentBranch(cwd: string): string | null {
+function getCurrentBranch(cwd: string): string | null {
   try {
     const branch = execSync("git rev-parse --abbrev-ref HEAD", {
       cwd,
@@ -34,10 +31,7 @@ export function getCurrentBranch(cwd: string): string | null {
   }
 }
 
-/**
- * Check if a directory is a git repository
- */
-export function isGitRepo(cwd: string): boolean {
+function isGitRepo(cwd: string): boolean {
   try {
     execSync("git rev-parse --git-dir", {
       cwd,

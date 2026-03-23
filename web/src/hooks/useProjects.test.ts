@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Project } from "@/types";
 
 const { getAll, settingsGet, settingsSet, toastInfo } = vi.hoisted(() => ({
   getAll: vi.fn(),
@@ -19,14 +20,27 @@ vi.mock("sonner", () => ({
 
 import { useProjects } from "./useProjects";
 
+function makeProject(id: string, name: string): Project {
+  return {
+    id,
+    name,
+    path: `/repo/${id}`,
+    createdAt: 0,
+    panes: [],
+    editor: null,
+    postWorktreeCommand: null,
+    useWorktrees: true,
+  };
+}
+
 describe("useProjects", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getAll.mockResolvedValue([
-      { id: "p1", name: "One" },
-      { id: "p2", name: "Two" },
-      { id: "p3", name: "Three" },
-      { id: "p4", name: "Four" },
+      makeProject("p1", "One"),
+      makeProject("p2", "Two"),
+      makeProject("p3", "Three"),
+      makeProject("p4", "Four"),
     ]);
     settingsGet.mockResolvedValue({ value: null });
     settingsSet.mockResolvedValue(undefined);
@@ -72,10 +86,10 @@ describe("useProjects", () => {
     });
 
     await act(async () => {
-      result.current.toggleProjectSelection({ id: "p1", name: "One" });
-      result.current.toggleProjectSelection({ id: "p2", name: "Two" });
-      result.current.toggleProjectSelection({ id: "p3", name: "Three" });
-      result.current.toggleProjectSelection({ id: "p4", name: "Four" });
+      result.current.toggleProjectSelection(makeProject("p1", "One"));
+      result.current.toggleProjectSelection(makeProject("p2", "Two"));
+      result.current.toggleProjectSelection(makeProject("p3", "Three"));
+      result.current.toggleProjectSelection(makeProject("p4", "Four"));
     });
 
     expect(result.current.selectedProjectIds).toEqual(["p1", "p2", "p3"]);

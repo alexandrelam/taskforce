@@ -1,6 +1,6 @@
 import type { Project, TicketResponse, CommitInfo, Pane } from "@/types";
 
-export class ApiError extends Error {
+class ApiError extends Error {
   status: number;
 
   constructor(message: string, status: number) {

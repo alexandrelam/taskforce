@@ -13,7 +13,7 @@ import {
   spawnTmuxCommand,
 } from "../worktree.js";
 
-export type WorktreeCreator = () => { worktreePath: string | null; error: string | null };
+type WorktreeCreator = () => { worktreePath: string | null; error: string | null };
 interface SetupPlan {
   create: WorktreeCreator;
 }
