@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 
 export function useTimer() {
-  const [, setTick] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      setTick((t) => t + 1);
+      setNow(Date.now());
     }, 1000);
     return () => clearInterval(intervalId);
   }, []);
+
+  return now;
 }
 
 export function formatElapsedTime(ms: number): string {

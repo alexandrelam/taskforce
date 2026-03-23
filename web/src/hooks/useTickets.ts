@@ -10,17 +10,18 @@ const INITIAL_COLUMNS: Columns = {
 };
 
 export function useTickets(selectedProjectId: string | null) {
-  const [columns, setColumns] = useState<Columns>(INITIAL_COLUMNS);
-  const [columnEnteredAt, setColumnEnteredAt] = useState<Record<string, number>>({});
+  const [storedColumns, setStoredColumns] = useState<Columns>(INITIAL_COLUMNS);
+  const [storedColumnEnteredAt, setStoredColumnEnteredAt] = useState<Record<string, number>>({});
+  const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null);
   const previousColumnsRef = useRef<Columns | null>(null);
   const previousSetupStatusRef = useRef<Record<string, string>>({});
 
+  const columns = loadedProjectId === selectedProjectId ? storedColumns : INITIAL_COLUMNS;
+  const columnEnteredAt = loadedProjectId === selectedProjectId ? storedColumnEnteredAt : {};
+
   // Fetch tickets with polling
   useEffect(() => {
-    if (!selectedProjectId) {
-      setColumns(INITIAL_COLUMNS);
-      return;
-    }
+    if (!selectedProjectId) return;
 
     const fetchTickets = () => {
       ticketsApi
@@ -50,7 +51,8 @@ export function useTickets(selectedProjectId: string | null) {
               });
             }
           });
-          setColumns(newColumns);
+          setStoredColumns(newColumns);
+          setLoadedProjectId(selectedProjectId);
 
           // Detect setup status changes and show toast for failures
           tickets.forEach((ticket) => {
@@ -71,7 +73,7 @@ export function useTickets(selectedProjectId: string | null) {
           });
 
           // Initialize columnEnteredAt for new tickets
-          setColumnEnteredAt((prev) => {
+          setStoredColumnEnteredAt((prev) => {
             const now = Date.now();
             const updated = { ...prev };
             tickets.forEach((ticket) => {
@@ -109,7 +111,7 @@ export function useTickets(selectedProjectId: string | null) {
         baseBranch: baseBranch?.trim() || null,
       });
 
-      setColumns((prev) => ({
+      setStoredColumns((prev) => ({
         ...prev,
         "To Do": [
           ...prev["To Do"],
@@ -146,7 +148,7 @@ export function useTickets(selectedProjectId: string | null) {
         prLink: prLink?.trim() || null,
       });
 
-      setColumns((prev) => ({
+      setStoredColumns((prev) => ({
         ...prev,
         "To Do": [
           ...prev["To Do"],
@@ -168,7 +170,7 @@ export function useTickets(selectedProjectId: string | null) {
 
   const deleteTicket = useCallback(async (taskId: string) => {
     await ticketsApi.delete(taskId);
-    setColumns((prev) => {
+    setStoredColumns((prev) => {
       const newColumns: Columns = {};
       for (const [colId, tasks] of Object.entries(prev)) {
         newColumns[colId] = tasks.filter((t) => t.id !== taskId);
@@ -179,7 +181,7 @@ export function useTickets(selectedProjectId: string | null) {
 
   const clearOverride = useCallback(async (taskId: string) => {
     await ticketsApi.clearOverride(taskId);
-    setColumns((prev) => {
+    setStoredColumns((prev) => {
       const newColumns: Columns = {};
       for (const [colId, tasks] of Object.entries(prev)) {
         newColumns[colId] = tasks.map((t) =>
@@ -205,7 +207,7 @@ export function useTickets(selectedProjectId: string | null) {
             // Task moved to this column, persist to backend
             ticketsApi.update(task.id, { column: colId }).catch(console.error);
             // Reset timer when ticket moves to a different column
-            setColumnEnteredAt((prevTimes) => ({
+            setStoredColumnEnteredAt((prevTimes) => ({
               ...prevTimes,
               [task.id]: Date.now(),
             }));
@@ -215,7 +217,7 @@ export function useTickets(selectedProjectId: string | null) {
       }
 
       previousColumnsRef.current = newColumns;
-      setColumns(newColumns);
+      setStoredColumns(newColumns);
     },
     [columns]
   );

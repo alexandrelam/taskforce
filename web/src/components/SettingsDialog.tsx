@@ -56,14 +56,29 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
   };
 
   useEffect(() => {
-    if (open) {
-      fetchProjects();
-      settingsApi.get("prPollInterval").then(({ value }) => {
-        if (value) {
-          setPrPollMinutes(String(parseInt(value, 10) / 60000));
-        }
-      });
-    }
+    if (!open) return;
+
+    let cancelled = false;
+
+    const loadDialogData = async () => {
+      const [projectData, { value }] = await Promise.all([
+        projectsApi.getAll(),
+        settingsApi.get("prPollInterval"),
+      ]);
+
+      if (cancelled) return;
+
+      setProjects(projectData);
+      if (value) {
+        setPrPollMinutes(String(parseInt(value, 10) / 60000));
+      }
+    };
+
+    void loadDialogData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   const handleSaveCommand = async (projectId: string, command: string) => {
