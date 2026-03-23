@@ -16,7 +16,12 @@ function ghAvailable() {
     }
 }
 function getInterval() {
-    const result = index_js_1.db.select().from(schema_js_1.settings).where((0, drizzle_orm_1.eq)(schema_js_1.settings.key, "prPollInterval")).limit(1).all();
+    const result = index_js_1.db
+        .select()
+        .from(schema_js_1.settings)
+        .where((0, drizzle_orm_1.eq)(schema_js_1.settings.key, "prPollInterval"))
+        .limit(1)
+        .all();
     const val = result[0]?.value;
     if (val) {
         const n = parseInt(val, 10);
@@ -30,7 +35,13 @@ function deriveChecksStatus(statusCheckRollup) {
         return null;
     if (statusCheckRollup.some((c) => c.conclusion === "FAILURE" || c.conclusion === "ERROR"))
         return "FAILURE";
-    if (statusCheckRollup.some((c) => c.status !== "COMPLETED"))
+    if (statusCheckRollup.some((c) => {
+        if (c.status)
+            return c.status !== "COMPLETED";
+        if (c.state)
+            return c.state !== "SUCCESS";
+        return false;
+    }))
         return "PENDING";
     return "SUCCESS";
 }
@@ -77,7 +88,9 @@ function tick() {
                     continue;
                 }
             }
-            catch { }
+            catch {
+                /* ignore malformed JSON */
+            }
         }
         const state = checkPr(row.prLink);
         index_js_1.db.update(schema_js_1.tickets)
@@ -86,10 +99,9 @@ function tick() {
             .run();
     }
 }
-let timer = null;
 function scheduleNext() {
     const interval = getInterval();
-    timer = setTimeout(() => {
+    setTimeout(() => {
         tick();
         scheduleNext();
     }, interval);

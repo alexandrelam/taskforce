@@ -7,7 +7,7 @@ const MAX_SELECTED_PROJECTS = 3;
 
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjects, setSelectedProjects] = useState<Project[]>([]);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
 
   const fetchProjects = useCallback(async () => {
@@ -17,24 +17,20 @@ export function useProjects() {
   }, []);
 
   const toggleProjectSelection = useCallback((project: Project) => {
-    setSelectedProjects((prev) => {
-      const isSelected = prev.some((p) => p.id === project.id);
-      let newSelection: Project[];
+    setSelectedProjectIds((prev) => {
+      const isSelected = prev.includes(project.id);
+      let newSelection: string[];
 
       if (isSelected) {
-        // Deselect
-        newSelection = prev.filter((p) => p.id !== project.id);
+        newSelection = prev.filter((id) => id !== project.id);
       } else if (prev.length < MAX_SELECTED_PROJECTS) {
-        // Select (if under limit)
-        newSelection = [...prev, project];
+        newSelection = [...prev, project.id];
       } else {
-        // At limit
         toast.info(`Maximum ${MAX_SELECTED_PROJECTS} projects can be selected`);
         return prev;
       }
 
-      // Persist to settings
-      settingsApi.set("selected_projects", JSON.stringify(newSelection.map((p) => p.id)));
+      void settingsApi.set("selected_projects", JSON.stringify(newSelection));
       return newSelection;
     });
   }, []);
@@ -49,10 +45,9 @@ export function useProjects() {
       if (settingsData.value) {
         try {
           const projectIds = JSON.parse(settingsData.value) as string[];
-          const selected = projectIds
-            .map((id) => projectList.find((p) => p.id === id))
-            .filter((p): p is Project => p !== undefined);
-          setSelectedProjects(selected);
+          setSelectedProjectIds(
+            projectIds.filter((id) => projectList.some((project) => project.id === id))
+          );
           return;
         } catch {
           // Fall through to old format
@@ -64,8 +59,7 @@ export function useProjects() {
       if (oldSettingsData.value) {
         const project = projectList.find((p) => p.id === oldSettingsData.value);
         if (project) {
-          setSelectedProjects([project]);
-          // Migrate to new format
+          setSelectedProjectIds([project.id]);
           await settingsApi.set("selected_projects", JSON.stringify([project.id]));
         }
       }
@@ -73,8 +67,23 @@ export function useProjects() {
     init();
   }, [fetchProjects]);
 
+  useEffect(() => {
+    setSelectedProjectIds((prev) => {
+      const filtered = prev.filter((id) => projects.some((project) => project.id === id));
+      if (filtered.length !== prev.length) {
+        void settingsApi.set("selected_projects", JSON.stringify(filtered));
+      }
+      return filtered;
+    });
+  }, [projects]);
+
+  const selectedProjects = selectedProjectIds
+    .map((id) => projects.find((project) => project.id === id))
+    .filter((project): project is Project => project !== undefined);
+
   return {
     projects,
+    selectedProjectIds,
     selectedProjects,
     projectDropdownOpen,
     setProjectDropdownOpen,

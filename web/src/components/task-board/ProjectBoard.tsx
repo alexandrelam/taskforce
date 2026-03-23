@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Loader2, GitPullRequest, MoreVertical, Plus, GitBranch } from "lucide-react";
 import { usePrAutoFill } from "@/hooks/usePrAutoFill";
 import { toast } from "sonner";
@@ -16,7 +16,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 
-import { useTickets } from "@/hooks/useTickets";
 import { useGitOperations } from "@/hooks/useGitOperations";
 import { usePrSuggestions, type PrSuggestion } from "@/hooks/usePrSuggestions";
 import { ticketsApi } from "@/lib/api";
@@ -289,27 +288,47 @@ function TicketStarter({ pr, projectId, onCreated }: TicketStarterProps) {
 
 interface ProjectBoardProps {
   project: Project;
+  columns: Columns;
+  columnEnteredAt: Record<string, number>;
   onOpenTask: (task: Task, projectId: string) => void;
-  onColumnsChange?: (columns: Columns) => void;
+  onCreateTicket: (
+    projectId: string,
+    title: string,
+    description: string,
+    runPostCommand: boolean,
+    prLink?: string,
+    baseBranch?: string
+  ) => Promise<void>;
+  onCreateFromBranch: (
+    projectId: string,
+    branchName: string,
+    description: string,
+    runPostCommand: boolean
+  ) => Promise<void>;
+  onDeleteTicket: (projectId: string, ticketId: string) => Promise<void>;
+  onClearOverride: (projectId: string, ticketId: string) => Promise<void>;
+  onUpdateTicket: (
+    projectId: string,
+    ticketId: string,
+    data: { column?: string; description?: string | null; prLink?: string | null }
+  ) => Promise<void>;
+  onColumnsChange: (projectId: string, columns: Columns) => void;
   selectedTaskId: string | null;
 }
 
 export function ProjectBoard({
   project,
+  columns,
+  columnEnteredAt,
   onOpenTask,
+  onCreateTicket,
+  onCreateFromBranch,
+  onDeleteTicket,
+  onClearOverride,
+  onUpdateTicket,
   onColumnsChange,
   selectedTaskId,
 }: ProjectBoardProps) {
-  const {
-    columns,
-    columnEnteredAt,
-    createTicket,
-    createFromBranch,
-    deleteTicket,
-    clearOverride,
-    handleColumnsChange,
-  } = useTickets(project.id);
-
   const { commitInfo, isPulling, pull } = useGitOperations(project.id);
   const { suggestions, setSuggestions } = usePrSuggestions(project.id);
 
@@ -326,17 +345,6 @@ export function ProjectBoard({
     useSensor(TouchSensor, { activationConstraint: { distance: 8 } })
   );
 
-  // Notify parent whenever columns change (from polling or drag)
-  useEffect(() => {
-    onColumnsChange?.(columns);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns]);
-
-  // Handle drag changes (updates local state + notifies parent)
-  const wrappedHandleColumnsChange = (newColumns: Columns) => {
-    handleColumnsChange(newColumns);
-  };
-
   // Handlers
   const handleCreateTicket = async (
     title: string,
@@ -345,7 +353,7 @@ export function ProjectBoard({
     prLink?: string,
     baseBranch?: string
   ) => {
-    await createTicket(title, description, runPostCommand, prLink, baseBranch);
+    await onCreateTicket(project.id, title, description, runPostCommand, prLink, baseBranch);
   };
 
   const handleOpenBranch = async (
@@ -353,7 +361,7 @@ export function ProjectBoard({
     description: string,
     runPostCommand: boolean
   ) => {
-    await createFromBranch(branchName, description, runPostCommand);
+    await onCreateFromBranch(project.id, branchName, description, runPostCommand);
   };
 
   const handleDeleteTicketClick = (e: React.MouseEvent, task: Task) => {
@@ -367,7 +375,7 @@ export function ProjectBoard({
     const taskId = ticketToDelete.id;
     setDeletingTicketId(taskId);
     try {
-      await deleteTicket(taskId);
+      await onDeleteTicket(project.id, taskId);
     } catch (error) {
       console.error("Failed to delete ticket:", error);
     } finally {
@@ -378,7 +386,7 @@ export function ProjectBoard({
 
   const handleClearOverride = async (e: React.MouseEvent, taskId: string) => {
     e.stopPropagation();
-    await clearOverride(taskId);
+    await onClearOverride(project.id, taskId);
   };
 
   const handleOpenEditor = async (e: React.MouseEvent, taskId: string) => {
@@ -414,7 +422,7 @@ export function ProjectBoard({
     if (!ticketToEdit) return;
 
     try {
-      await ticketsApi.update(ticketToEdit.id, {
+      await onUpdateTicket(project.id, ticketToEdit.id, {
         description: description || null,
         prLink: prLink || null,
       });
@@ -475,7 +483,7 @@ export function ProjectBoard({
       {/* Kanban Board */}
       <Kanban
         value={columns}
-        onValueChange={wrappedHandleColumnsChange}
+        onValueChange={(nextColumns) => onColumnsChange(project.id, nextColumns)}
         getItemValue={(item) => item.id}
         sensors={sensors}
       >

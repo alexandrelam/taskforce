@@ -1,17 +1,16 @@
-import { useState, useMemo, useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 import { useProjects } from "@/hooks/useProjects";
 import { useTerminalPanel } from "@/hooks/useTerminalPanel";
 import { useTimer } from "@/hooks/useTimer";
+import { useTaskBoardData } from "@/features/task-board/useTaskBoardData";
 
 import { GlobalHeader, ProjectBoard, TerminalPanel } from "./task-board";
 
-import type { Columns } from "@/types";
-
 export function TaskBoard() {
-  // Custom hooks
   const {
     projects,
+    selectedProjectIds,
     selectedProjects,
     projectDropdownOpen,
     setProjectDropdownOpen,
@@ -33,34 +32,53 @@ export function TaskBoard() {
 
   useTimer();
 
-  // Track all columns from all projects for terminal cwd mapping
-  const [allColumns, setAllColumns] = useState<Record<string, Columns>>({});
+  const {
+    columnsByProject,
+    columnEnteredAtByProject,
+    taskCwdMap,
+    createTicket,
+    createFromBranch,
+    updateTicket,
+    deleteTicket,
+    clearOverride,
+    handleColumnsChange,
+  } = useTaskBoardData(selectedProjectIds);
 
-  // Handle columns change from any ProjectBoard
-  const handleColumnsChange = useCallback(
-    (projectId: string, columns: Columns) => {
-      setAllColumns((prev) => ({ ...prev, [projectId]: columns }));
+  const handleProjectColumnsChange = useCallback(
+    (projectId: string, columns: (typeof columnsByProject)[string]) => {
+      handleColumnsChange(projectId, columns);
       updateTaskFromColumns(columns);
     },
-    [updateTaskFromColumns]
+    [handleColumnsChange, updateTaskFromColumns]
   );
 
-  // Build combined cwd map from all projects' columns
-  const taskCwdMap = useMemo(() => {
-    const map: Record<string, string | null | undefined> = {};
-    Object.values(allColumns).forEach((columns) => {
-      Object.values(columns)
-        .flat()
-        .forEach((task) => {
-          if (task.worktreePath) {
-            map[task.id] = task.worktreePath;
-          }
-        });
-    });
-    return map;
-  }, [allColumns]);
+  const handleCreateTicket = useCallback(
+    async (
+      projectId: string,
+      title: string,
+      description: string,
+      runPostCommand: boolean,
+      prLink?: string,
+      baseBranch?: string
+    ) => {
+      await createTicket(projectId, title, description, runPostCommand, prLink, baseBranch);
+    },
+    [createTicket]
+  );
 
-  // Find the project for the selected task
+  const handleCreateFromBranch = useCallback(
+    async (projectId: string, branchName: string, description: string, runPostCommand: boolean) => {
+      await createFromBranch(projectId, branchName, description, runPostCommand);
+    },
+    [createFromBranch]
+  );
+
+  useEffect(() => {
+    Object.values(columnsByProject).forEach((columns) => {
+      updateTaskFromColumns(columns);
+    });
+  }, [columnsByProject, updateTaskFromColumns]);
+
   const selectedProject = selectedProjects.find((p) => p.id === selectedProjectId) ?? null;
 
   return (
@@ -89,8 +107,17 @@ export function TaskBoard() {
               <div key={project.id} className={index > 0 ? "border-t border-border pt-4 mt-4" : ""}>
                 <ProjectBoard
                   project={project}
+                  columns={
+                    columnsByProject[project.id] ?? { "To Do": [], "In Progress": [], Done: [] }
+                  }
+                  columnEnteredAt={columnEnteredAtByProject[project.id] ?? {}}
                   onOpenTask={openTask}
-                  onColumnsChange={(columns) => handleColumnsChange(project.id, columns)}
+                  onCreateTicket={handleCreateTicket}
+                  onCreateFromBranch={handleCreateFromBranch}
+                  onDeleteTicket={deleteTicket}
+                  onClearOverride={clearOverride}
+                  onUpdateTicket={updateTicket}
+                  onColumnsChange={handleProjectColumnsChange}
                   selectedTaskId={selectedTask?.id ?? null}
                 />
               </div>
