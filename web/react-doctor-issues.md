@@ -15,11 +15,11 @@ Summary:
 ## State Management
 
 - [x] Refactor `src/components/SettingsDialog.tsx:45` to reduce `useState` count and consider `useReducer` for related state.
-- [ ] Refactor `src/components/task-board/ProjectBoard.tsx:56` to reduce `useState` count and consider `useReducer` for related state.
-- [ ] Refactor `src/components/task-board/ProjectBoard.tsx:331` to reduce `useState` count and consider `useReducer` for related state.
-- [ ] Refactor `src/components/task-board/dialogs/OpenBranchDialog.tsx:21` to reduce `useState` count and consider `useReducer` for related state.
-- [ ] Refactor `src/components/task-board/dialogs/CreateTicketDialog.tsx:32` to reduce `useState` count and consider `useReducer` for related state.
-- [ ] Refactor `src/components/settings/CreateProjectForm.tsx:11` to reduce `useState` count and consider `useReducer` for related state.
+- [x] Refactor `src/components/task-board/ProjectBoard.tsx:56` to reduce `useState` count and consider `useReducer` for related state.
+- [x] Refactor `src/components/task-board/ProjectBoard.tsx:331` to reduce `useState` count and consider `useReducer` for related state.
+- [x] Refactor `src/components/task-board/dialogs/OpenBranchDialog.tsx:21` to reduce `useState` count and consider `useReducer` for related state.
+- [x] Refactor `src/components/task-board/dialogs/CreateTicketDialog.tsx:32` to reduce `useState` count and consider `useReducer` for related state.
+- [x] Refactor `src/components/settings/CreateProjectForm.tsx:11` to reduce `useState` count and consider `useReducer` for related state.
 
 ## Effects Used As Event Handlers
 
