@@ -29,9 +29,12 @@ RUN npm prune --omit=dev --ignore-scripts
 
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/web/dist ./web/dist
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN mkdir -p /app/data
+RUN chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 3325
 
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "dist/index.js"]
