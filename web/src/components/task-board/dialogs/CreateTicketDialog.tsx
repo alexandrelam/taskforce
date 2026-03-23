@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useReducer } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,51 +25,103 @@ interface CreateTicketDialogProps {
   ) => Promise<void>;
 }
 
+interface CreateTicketDialogState {
+  open: boolean;
+  title: string;
+  description: string;
+  prLink: string;
+  baseBranch: string;
+  runPostCommand: boolean;
+  isCreating: boolean;
+}
+
+type CreateTicketDialogAction =
+  | { type: "setOpen"; open: boolean }
+  | { type: "setTitle"; value: string }
+  | { type: "setDescription"; value: string }
+  | { type: "setPrLink"; value: string }
+  | { type: "setBaseBranch"; value: string }
+  | { type: "setRunPostCommand"; value: boolean }
+  | { type: "startCreating" }
+  | { type: "finishCreating" }
+  | { type: "reset" };
+
+const initialState: CreateTicketDialogState = {
+  open: false,
+  title: "",
+  description: "",
+  prLink: "",
+  baseBranch: "",
+  runPostCommand: true,
+  isCreating: false,
+};
+
+function createTicketDialogReducer(
+  state: CreateTicketDialogState,
+  action: CreateTicketDialogAction
+): CreateTicketDialogState {
+  switch (action.type) {
+    case "setOpen":
+      return { ...state, open: action.open };
+    case "setTitle":
+      return { ...state, title: action.value };
+    case "setDescription":
+      return { ...state, description: action.value };
+    case "setPrLink":
+      return { ...state, prLink: action.value };
+    case "setBaseBranch":
+      return { ...state, baseBranch: action.value };
+    case "setRunPostCommand":
+      return { ...state, runPostCommand: action.value };
+    case "startCreating":
+      return { ...state, isCreating: true };
+    case "finishCreating":
+      return { ...state, isCreating: false };
+    case "reset":
+      return {
+        ...initialState,
+        open: state.open,
+      };
+    default:
+      return state;
+  }
+}
+
 export function CreateTicketDialog({
   disabled,
   hasPostCommand,
   onSubmit,
 }: CreateTicketDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [prLink, setPrLink] = useState("");
-  const [baseBranch, setBaseBranch] = useState("");
-  const [runPostCommand, setRunPostCommand] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
+  const [state, dispatch] = useReducer(createTicketDialogReducer, initialState);
   const { isFetchingPr, handlePrLinkPaste } = usePrAutoFill({
-    title,
-    baseBranch,
-    setTitle,
-    setBaseBranch,
+    title: state.title,
+    baseBranch: state.baseBranch,
+    setTitle: (value) => dispatch({ type: "setTitle", value }),
+    setBaseBranch: (value) => dispatch({ type: "setBaseBranch", value }),
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || isCreating) return;
+    if (!state.title.trim() || state.isCreating) return;
 
-    setIsCreating(true);
+    dispatch({ type: "startCreating" });
     try {
       await onSubmit(
-        title.trim(),
-        description.trim(),
-        runPostCommand,
-        prLink.trim(),
-        baseBranch.trim() || undefined
+        state.title.trim(),
+        state.description.trim(),
+        state.runPostCommand,
+        state.prLink.trim(),
+        state.baseBranch.trim() || undefined
       );
-      setTitle("");
-      setDescription("");
-      setPrLink("");
-      setBaseBranch("");
-      setRunPostCommand(true);
-      setOpen(false);
+      dispatch({ type: "reset" });
+      dispatch({ type: "setOpen", open: false });
     } finally {
-      setIsCreating(false);
+      dispatch({ type: "finishCreating" });
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={state.open} onOpenChange={(open) => dispatch({ type: "setOpen", open })}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" disabled={disabled}>
           Add Ticket
@@ -82,21 +134,20 @@ export function CreateTicketDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             placeholder="Ticket title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            autoFocus
+            value={state.title}
+            onChange={(e) => dispatch({ type: "setTitle", value: e.target.value })}
           />
           <textarea
             placeholder="Description (optional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={state.description}
+            onChange={(e) => dispatch({ type: "setDescription", value: e.target.value })}
             className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
           />
           <div className="relative">
             <Input
               placeholder="PR link (optional, e.g., https://github.com/...)"
-              value={prLink}
-              onChange={(e) => setPrLink(e.target.value)}
+              value={state.prLink}
+              onChange={(e) => dispatch({ type: "setPrLink", value: e.target.value })}
               onPaste={handlePrLinkPaste}
             />
             {isFetchingPr && (
@@ -105,8 +156,8 @@ export function CreateTicketDialog({
           </div>
           <Input
             placeholder="Base branch (optional, defaults to current branch)"
-            value={baseBranch}
-            onChange={(e) => setBaseBranch(e.target.value)}
+            value={state.baseBranch}
+            onChange={(e) => dispatch({ type: "setBaseBranch", value: e.target.value })}
           />
           {hasPostCommand && (
             <div className="flex items-center justify-between">
@@ -115,13 +166,13 @@ export function CreateTicketDialog({
               </Label>
               <Switch
                 id="run-post-command"
-                checked={runPostCommand}
-                onCheckedChange={setRunPostCommand}
+                checked={state.runPostCommand}
+                onCheckedChange={(value) => dispatch({ type: "setRunPostCommand", value })}
               />
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={isCreating}>
-            {isCreating ? (
+          <Button type="submit" className="w-full" disabled={state.isCreating}>
+            {state.isCreating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 Creating...

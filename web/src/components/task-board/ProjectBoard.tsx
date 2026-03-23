@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useReducer, useState } from "react";
 import { Loader2, GitPullRequest, MoreVertical, Plus, GitBranch } from "lucide-react";
 import { usePrAutoFill } from "@/hooks/usePrAutoFill";
 import { toast } from "sonner";
@@ -48,46 +48,94 @@ interface ControlledCreateTicketDialogProps {
   ) => Promise<void>;
 }
 
+interface ControlledCreateTicketDialogState {
+  title: string;
+  description: string;
+  prLink: string;
+  baseBranch: string;
+  runPostCommand: boolean;
+  isCreating: boolean;
+}
+
+type ControlledCreateTicketDialogAction =
+  | { type: "setTitle"; value: string }
+  | { type: "setDescription"; value: string }
+  | { type: "setPrLink"; value: string }
+  | { type: "setBaseBranch"; value: string }
+  | { type: "setRunPostCommand"; value: boolean }
+  | { type: "startCreating" }
+  | { type: "finishCreating" }
+  | { type: "reset" };
+
+const initialControlledCreateTicketDialogState: ControlledCreateTicketDialogState = {
+  title: "",
+  description: "",
+  prLink: "",
+  baseBranch: "",
+  runPostCommand: true,
+  isCreating: false,
+};
+
+function controlledCreateTicketDialogReducer(
+  state: ControlledCreateTicketDialogState,
+  action: ControlledCreateTicketDialogAction
+): ControlledCreateTicketDialogState {
+  switch (action.type) {
+    case "setTitle":
+      return { ...state, title: action.value };
+    case "setDescription":
+      return { ...state, description: action.value };
+    case "setPrLink":
+      return { ...state, prLink: action.value };
+    case "setBaseBranch":
+      return { ...state, baseBranch: action.value };
+    case "setRunPostCommand":
+      return { ...state, runPostCommand: action.value };
+    case "startCreating":
+      return { ...state, isCreating: true };
+    case "finishCreating":
+      return { ...state, isCreating: false };
+    case "reset":
+      return initialControlledCreateTicketDialogState;
+    default:
+      return state;
+  }
+}
+
 function ControlledCreateTicketDialog({
   open,
   onOpenChange,
   hasPostCommand,
   onSubmit,
 }: ControlledCreateTicketDialogProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [prLink, setPrLink] = useState("");
-  const [baseBranch, setBaseBranch] = useState("");
-  const [runPostCommand, setRunPostCommand] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
+  const [state, dispatch] = useReducer(
+    controlledCreateTicketDialogReducer,
+    initialControlledCreateTicketDialogState
+  );
   const { isFetchingPr, handlePrLinkPaste } = usePrAutoFill({
-    title,
-    baseBranch,
-    setTitle,
-    setBaseBranch,
+    title: state.title,
+    baseBranch: state.baseBranch,
+    setTitle: (value) => dispatch({ type: "setTitle", value }),
+    setBaseBranch: (value) => dispatch({ type: "setBaseBranch", value }),
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || isCreating) return;
+    if (!state.title.trim() || state.isCreating) return;
 
-    setIsCreating(true);
+    dispatch({ type: "startCreating" });
     try {
       await onSubmit(
-        title.trim(),
-        description.trim(),
-        runPostCommand,
-        prLink.trim(),
-        baseBranch.trim() || undefined
+        state.title.trim(),
+        state.description.trim(),
+        state.runPostCommand,
+        state.prLink.trim(),
+        state.baseBranch.trim() || undefined
       );
-      setTitle("");
-      setDescription("");
-      setPrLink("");
-      setBaseBranch("");
-      setRunPostCommand(true);
+      dispatch({ type: "reset" });
       onOpenChange(false);
     } finally {
-      setIsCreating(false);
+      dispatch({ type: "finishCreating" });
     }
   };
 
@@ -100,21 +148,20 @@ function ControlledCreateTicketDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             placeholder="Ticket title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            autoFocus
+            value={state.title}
+            onChange={(e) => dispatch({ type: "setTitle", value: e.target.value })}
           />
           <textarea
             placeholder="Description (optional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={state.description}
+            onChange={(e) => dispatch({ type: "setDescription", value: e.target.value })}
             className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
           />
           <div className="relative">
             <Input
               placeholder="PR link (optional, e.g., https://github.com/...)"
-              value={prLink}
-              onChange={(e) => setPrLink(e.target.value)}
+              value={state.prLink}
+              onChange={(e) => dispatch({ type: "setPrLink", value: e.target.value })}
               onPaste={handlePrLinkPaste}
             />
             {isFetchingPr && (
@@ -123,8 +170,8 @@ function ControlledCreateTicketDialog({
           </div>
           <Input
             placeholder="Base branch (optional, defaults to current branch)"
-            value={baseBranch}
-            onChange={(e) => setBaseBranch(e.target.value)}
+            value={state.baseBranch}
+            onChange={(e) => dispatch({ type: "setBaseBranch", value: e.target.value })}
           />
           {hasPostCommand && (
             <div className="flex items-center justify-between">
@@ -136,13 +183,13 @@ function ControlledCreateTicketDialog({
               </Label>
               <Switch
                 id="run-post-command-mobile-board"
-                checked={runPostCommand}
-                onCheckedChange={setRunPostCommand}
+                checked={state.runPostCommand}
+                onCheckedChange={(value) => dispatch({ type: "setRunPostCommand", value })}
               />
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={isCreating}>
-            {isCreating ? (
+          <Button type="submit" className="w-full" disabled={state.isCreating}>
+            {state.isCreating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 Creating...
@@ -164,30 +211,72 @@ interface ControlledOpenBranchDialogProps {
   onSubmit: (branchName: string, description: string, runPostCommand: boolean) => Promise<void>;
 }
 
+interface ControlledOpenBranchDialogState {
+  branchName: string;
+  description: string;
+  runPostCommand: boolean;
+  isOpening: boolean;
+}
+
+type ControlledOpenBranchDialogAction =
+  | { type: "setBranchName"; value: string }
+  | { type: "setDescription"; value: string }
+  | { type: "setRunPostCommand"; value: boolean }
+  | { type: "startOpening" }
+  | { type: "finishOpening" }
+  | { type: "reset" };
+
+const initialControlledOpenBranchDialogState: ControlledOpenBranchDialogState = {
+  branchName: "",
+  description: "",
+  runPostCommand: true,
+  isOpening: false,
+};
+
+function controlledOpenBranchDialogReducer(
+  state: ControlledOpenBranchDialogState,
+  action: ControlledOpenBranchDialogAction
+): ControlledOpenBranchDialogState {
+  switch (action.type) {
+    case "setBranchName":
+      return { ...state, branchName: action.value };
+    case "setDescription":
+      return { ...state, description: action.value };
+    case "setRunPostCommand":
+      return { ...state, runPostCommand: action.value };
+    case "startOpening":
+      return { ...state, isOpening: true };
+    case "finishOpening":
+      return { ...state, isOpening: false };
+    case "reset":
+      return initialControlledOpenBranchDialogState;
+    default:
+      return state;
+  }
+}
+
 function ControlledOpenBranchDialog({
   open,
   onOpenChange,
   hasPostCommand,
   onSubmit,
 }: ControlledOpenBranchDialogProps) {
-  const [branchName, setBranchName] = useState("");
-  const [description, setDescription] = useState("");
-  const [runPostCommand, setRunPostCommand] = useState(true);
-  const [isOpening, setIsOpening] = useState(false);
+  const [state, dispatch] = useReducer(
+    controlledOpenBranchDialogReducer,
+    initialControlledOpenBranchDialogState
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!branchName.trim() || isOpening) return;
+    if (!state.branchName.trim() || state.isOpening) return;
 
-    setIsOpening(true);
+    dispatch({ type: "startOpening" });
     try {
-      await onSubmit(branchName.trim(), description.trim(), runPostCommand);
-      setBranchName("");
-      setDescription("");
-      setRunPostCommand(true);
+      await onSubmit(state.branchName.trim(), state.description.trim(), state.runPostCommand);
+      dispatch({ type: "reset" });
       onOpenChange(false);
     } finally {
-      setIsOpening(false);
+      dispatch({ type: "finishOpening" });
     }
   };
 
@@ -200,14 +289,13 @@ function ControlledOpenBranchDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             placeholder="Branch name (e.g., feature-x or origin/feature-x)"
-            value={branchName}
-            onChange={(e) => setBranchName(e.target.value)}
-            autoFocus
+            value={state.branchName}
+            onChange={(e) => dispatch({ type: "setBranchName", value: e.target.value })}
           />
           <textarea
             placeholder="Description (optional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={state.description}
+            onChange={(e) => dispatch({ type: "setDescription", value: e.target.value })}
             className="w-full min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
           />
           {hasPostCommand && (
@@ -220,13 +308,13 @@ function ControlledOpenBranchDialog({
               </Label>
               <Switch
                 id="run-post-command-branch-mobile-board"
-                checked={runPostCommand}
-                onCheckedChange={setRunPostCommand}
+                checked={state.runPostCommand}
+                onCheckedChange={(value) => dispatch({ type: "setRunPostCommand", value })}
               />
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={isOpening}>
-            {isOpening ? (
+          <Button type="submit" className="w-full" disabled={state.isOpening}>
+            {state.isOpening ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 Opening...
@@ -316,6 +404,72 @@ interface ProjectBoardProps {
   selectedTaskId: string | null;
 }
 
+interface ProjectBoardUiState {
+  deletingTicketId: string | null;
+  ticketToDelete: Task | null;
+  ticketToEdit: Task | null;
+  ticketEditDescription: string;
+  ticketEditPrLink: string;
+  createTicketOpen: boolean;
+  openBranchOpen: boolean;
+}
+
+type ProjectBoardUiAction =
+  | { type: "setDeletingTicketId"; ticketId: string | null }
+  | { type: "setTicketToDelete"; ticket: Task | null }
+  | { type: "openEditTicket"; ticket: Task }
+  | { type: "closeEditTicket" }
+  | { type: "setTicketEditDescription"; value: string }
+  | { type: "setTicketEditPrLink"; value: string }
+  | { type: "setCreateTicketOpen"; open: boolean }
+  | { type: "setOpenBranchOpen"; open: boolean };
+
+const initialProjectBoardUiState: ProjectBoardUiState = {
+  deletingTicketId: null,
+  ticketToDelete: null,
+  ticketToEdit: null,
+  ticketEditDescription: "",
+  ticketEditPrLink: "",
+  createTicketOpen: false,
+  openBranchOpen: false,
+};
+
+function projectBoardUiReducer(
+  state: ProjectBoardUiState,
+  action: ProjectBoardUiAction
+): ProjectBoardUiState {
+  switch (action.type) {
+    case "setDeletingTicketId":
+      return { ...state, deletingTicketId: action.ticketId };
+    case "setTicketToDelete":
+      return { ...state, ticketToDelete: action.ticket };
+    case "openEditTicket":
+      return {
+        ...state,
+        ticketToEdit: action.ticket,
+        ticketEditDescription: action.ticket.description || "",
+        ticketEditPrLink: action.ticket.prLink || "",
+      };
+    case "closeEditTicket":
+      return {
+        ...state,
+        ticketToEdit: null,
+        ticketEditDescription: "",
+        ticketEditPrLink: "",
+      };
+    case "setTicketEditDescription":
+      return { ...state, ticketEditDescription: action.value };
+    case "setTicketEditPrLink":
+      return { ...state, ticketEditPrLink: action.value };
+    case "setCreateTicketOpen":
+      return { ...state, createTicketOpen: action.open };
+    case "setOpenBranchOpen":
+      return { ...state, openBranchOpen: action.open };
+    default:
+      return state;
+  }
+}
+
 export function ProjectBoard({
   project,
   columns,
@@ -333,11 +487,7 @@ export function ProjectBoard({
   const { suggestions, setSuggestions } = usePrSuggestions(project.id);
 
   // Local UI state
-  const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
-  const [ticketToDelete, setTicketToDelete] = useState<Task | null>(null);
-  const [ticketToEdit, setTicketToEdit] = useState<Task | null>(null);
-  const [createTicketOpen, setCreateTicketOpen] = useState(false);
-  const [openBranchOpen, setOpenBranchOpen] = useState(false);
+  const [uiState, dispatch] = useReducer(projectBoardUiReducer, initialProjectBoardUiState);
 
   // Require 8px movement before drag starts - allows clicks to work
   const sensors = useSensors(
@@ -366,21 +516,21 @@ export function ProjectBoard({
 
   const handleDeleteTicketClick = (e: React.MouseEvent, task: Task) => {
     e.stopPropagation();
-    setTicketToDelete(task);
+    dispatch({ type: "setTicketToDelete", ticket: task });
   };
 
   const handleConfirmDelete = async () => {
-    if (!ticketToDelete) return;
+    if (!uiState.ticketToDelete) return;
 
-    const taskId = ticketToDelete.id;
-    setDeletingTicketId(taskId);
+    const taskId = uiState.ticketToDelete.id;
+    dispatch({ type: "setDeletingTicketId", ticketId: taskId });
     try {
       await onDeleteTicket(project.id, taskId);
     } catch (error) {
       console.error("Failed to delete ticket:", error);
     } finally {
-      setDeletingTicketId(null);
-      setTicketToDelete(null);
+      dispatch({ type: "setDeletingTicketId", ticketId: null });
+      dispatch({ type: "setTicketToDelete", ticket: null });
     }
   };
 
@@ -415,18 +565,18 @@ export function ProjectBoard({
 
   const handleEditTicketClick = (e: React.MouseEvent, task: Task) => {
     e.stopPropagation();
-    setTicketToEdit(task);
+    dispatch({ type: "openEditTicket", ticket: task });
   };
 
   const handleConfirmEdit = async (description: string, prLink: string) => {
-    if (!ticketToEdit) return;
+    if (!uiState.ticketToEdit) return;
 
     try {
-      await onUpdateTicket(project.id, ticketToEdit.id, {
+      await onUpdateTicket(project.id, uiState.ticketToEdit.id, {
         description: description || null,
         prLink: prLink || null,
       });
-      setTicketToEdit(null);
+      dispatch({ type: "closeEditTicket" });
       // Polling will refresh the data automatically
     } catch (error) {
       console.error("Failed to update ticket:", error);
@@ -467,11 +617,15 @@ export function ProjectBoard({
                 )}
                 <span>Pull</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setCreateTicketOpen(true)}>
+              <DropdownMenuItem
+                onSelect={() => dispatch({ type: "setCreateTicketOpen", open: true })}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 <span>Add Ticket</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setOpenBranchOpen(true)}>
+              <DropdownMenuItem
+                onSelect={() => dispatch({ type: "setOpenBranchOpen", open: true })}
+              >
                 <GitBranch className="h-4 w-4 mr-2" />
                 <span>Open Branch</span>
               </DropdownMenuItem>
@@ -523,7 +677,7 @@ export function ProjectBoard({
                       task={task}
                       columnEnteredAt={columnEnteredAt[task.id]}
                       hasEditor={!!project.editor}
-                      isDeleting={deletingTicketId === task.id}
+                      isDeleting={uiState.deletingTicketId === task.id}
                       isSelected={selectedTaskId === task.id}
                       onClick={() => onOpenTask(task, project.id)}
                       onDelete={(e) => handleDeleteTicketClick(e, task)}
@@ -560,28 +714,32 @@ export function ProjectBoard({
 
       {/* Delete Confirmation Dialog */}
       <DeleteTicketDialog
-        ticket={ticketToDelete}
+        ticket={uiState.ticketToDelete}
         onConfirm={handleConfirmDelete}
-        onCancel={() => setTicketToDelete(null)}
+        onCancel={() => dispatch({ type: "setTicketToDelete", ticket: null })}
       />
 
       {/* Edit Ticket Dialog */}
       <EditTicketDialog
-        task={ticketToEdit}
+        task={uiState.ticketToEdit}
+        description={uiState.ticketEditDescription}
+        prLink={uiState.ticketEditPrLink}
+        onDescriptionChange={(value) => dispatch({ type: "setTicketEditDescription", value })}
+        onPrLinkChange={(value) => dispatch({ type: "setTicketEditPrLink", value })}
         onSubmit={handleConfirmEdit}
-        onCancel={() => setTicketToEdit(null)}
+        onCancel={() => dispatch({ type: "closeEditTicket" })}
       />
 
       {/* Controlled dialogs for mobile menu */}
       <ControlledCreateTicketDialog
-        open={createTicketOpen}
-        onOpenChange={setCreateTicketOpen}
+        open={uiState.createTicketOpen}
+        onOpenChange={(open) => dispatch({ type: "setCreateTicketOpen", open })}
         hasPostCommand={!!project.postWorktreeCommand}
         onSubmit={handleCreateTicket}
       />
       <ControlledOpenBranchDialog
-        open={openBranchOpen}
-        onOpenChange={setOpenBranchOpen}
+        open={uiState.openBranchOpen}
+        onOpenChange={(open) => dispatch({ type: "setOpenBranchOpen", open })}
         hasPostCommand={!!project.postWorktreeCommand}
         onSubmit={handleOpenBranch}
       />
