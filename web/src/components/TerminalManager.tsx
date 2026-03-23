@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
+import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useMemo } from "react";
 import { Terminal, type TerminalHandle } from "./Terminal";
 import type { Pane } from "@/types";
 
@@ -26,8 +26,6 @@ export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManager
     { activeTaskIds, currentTaskId, currentPane, panes, defaultCwd, taskCwdMap, setupSessions },
     ref
   ) {
-    // Track which sessions have been activated (for lazy creation)
-    const activatedSessions = useRef<Set<string>>(new Set());
     const terminalRefs = useRef<Map<string, TerminalHandle>>(new Map());
 
     const closeAll = useCallback(() => {
@@ -35,7 +33,6 @@ export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManager
         handle.close();
       });
       terminalRefs.current.clear();
-      activatedSessions.current.clear();
     }, []);
 
     useImperativeHandle(ref, () => ({
@@ -63,21 +60,12 @@ export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManager
         if (!activeSet.has(taskId)) {
           handle.close();
           terminalRefs.current.delete(sessionId);
-          activatedSessions.current.delete(sessionId);
         }
       });
     }, [activeTaskIds]);
 
-    // Mark current session as activated when it becomes visible
-    useEffect(() => {
-      if (currentTaskId && currentPane) {
-        const sessionId = getSessionId(currentTaskId, currentPane);
-        activatedSessions.current.add(sessionId);
-      }
-    }, [currentTaskId, currentPane]);
-
     // Build list of all pane names (claude + custom panes)
-    const allPaneNames = ["claude", ...panes.map((p) => p.name)];
+    const allPaneNames = useMemo(() => ["claude", ...panes.map((p) => p.name)], [panes]);
 
     return (
       <>
@@ -92,35 +80,26 @@ export const TerminalManager = forwardRef<TerminalManagerHandle, TerminalManager
           if (setupSession) {
             const setupSessionId = setupSession;
             const isSetupVisible = taskId === currentTaskId && currentPane === "setup";
-            const isSetupActivated = activatedSessions.current.has(setupSessionId);
 
-            if (isSetupActivated || isSetupVisible) {
-              terminals.push(
-                <Terminal
-                  key={setupSessionId}
-                  ref={(handle) => {
-                    if (handle) {
-                      terminalRefs.current.set(setupSessionId, handle);
-                    }
-                  }}
-                  visible={isSetupVisible}
-                  sessionId={setupSessionId}
-                  cwd={taskCwd}
-                />
-              );
-            }
+            terminals.push(
+              <Terminal
+                key={setupSessionId}
+                ref={(handle) => {
+                  if (handle) {
+                    terminalRefs.current.set(setupSessionId, handle);
+                  }
+                }}
+                visible={isSetupVisible}
+                sessionId={setupSessionId}
+                cwd={taskCwd}
+              />
+            );
           }
 
           // Handle regular panes
           allPaneNames.forEach((paneName) => {
             const sessionId = getSessionId(taskId, paneName);
             const isVisible = taskId === currentTaskId && paneName === currentPane;
-            const isActivated = activatedSessions.current.has(sessionId);
-
-            // Lazy creation: only render terminal if it has been activated
-            if (!isActivated && !isVisible) {
-              return;
-            }
 
             terminals.push(
               <Terminal

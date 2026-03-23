@@ -7,17 +7,28 @@ const MAX_SELECTED_PROJECTS = 3;
 
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+  const [storedSelectedProjectIds, setStoredSelectedProjectIds] = useState<string[]>([]);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
 
   const fetchProjects = useCallback(async () => {
     const data = await projectsApi.getAll();
     setProjects(data);
+    setStoredSelectedProjectIds((prev) => {
+      const filtered = prev.filter((id) => data.some((project) => project.id === id));
+      if (filtered.length !== prev.length) {
+        void settingsApi.set("selected_projects", JSON.stringify(filtered));
+      }
+      return filtered;
+    });
     return data;
   }, []);
 
+  const selectedProjectIds = storedSelectedProjectIds.filter((id) =>
+    projects.some((project) => project.id === id)
+  );
+
   const toggleProjectSelection = useCallback((project: Project) => {
-    setSelectedProjectIds((prev) => {
+    setStoredSelectedProjectIds((prev) => {
       const isSelected = prev.includes(project.id);
       let newSelection: string[];
 
@@ -45,7 +56,7 @@ export function useProjects() {
       if (settingsData.value) {
         try {
           const projectIds = JSON.parse(settingsData.value) as string[];
-          setSelectedProjectIds(
+          setStoredSelectedProjectIds(
             projectIds.filter((id) => projectList.some((project) => project.id === id))
           );
           return;
@@ -59,23 +70,13 @@ export function useProjects() {
       if (oldSettingsData.value) {
         const project = projectList.find((p) => p.id === oldSettingsData.value);
         if (project) {
-          setSelectedProjectIds([project.id]);
+          setStoredSelectedProjectIds([project.id]);
           await settingsApi.set("selected_projects", JSON.stringify([project.id]));
         }
       }
     };
     init();
   }, [fetchProjects]);
-
-  useEffect(() => {
-    setSelectedProjectIds((prev) => {
-      const filtered = prev.filter((id) => projects.some((project) => project.id === id));
-      if (filtered.length !== prev.length) {
-        void settingsApi.set("selected_projects", JSON.stringify(filtered));
-      }
-      return filtered;
-    });
-  }, [projects]);
 
   const selectedProjects = selectedProjectIds
     .map((id) => projects.find((project) => project.id === id))
