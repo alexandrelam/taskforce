@@ -18,10 +18,15 @@ FROM node:24-bookworm-slim AS runtime
 
 WORKDIR /app
 
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git gh \
+  && rm -rf /var/lib/apt/lists/*
+
 ENV NODE_ENV=production
 ENV PORT=3325
 ENV DATABASE_PATH=/app/data/sqlite.db
 ENV HUSKY=0
+ENV SHELL=/bin/sh
 
 COPY package.json package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules

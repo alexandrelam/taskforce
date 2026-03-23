@@ -41,18 +41,13 @@ const ws_1 = require("ws");
 const pty = __importStar(require("node-pty"));
 const fs_1 = require("fs");
 const child_process_1 = require("child_process");
-const shell = process.platform === "win32" ? "powershell.exe" : process.env.SHELL || "/bin/zsh";
+const runtime_tools_js_1 = require("./runtime-tools.js");
+const shell = process.platform === "win32" ? "powershell.exe" : (0, runtime_tools_js_1.resolveShell)();
 // Detect tmux availability at module load
 function detectTmux() {
     if (process.platform === "win32")
         return false;
-    try {
-        (0, child_process_1.execSync)("which tmux", { stdio: "ignore" });
-        return true;
-    }
-    catch {
-        return false;
-    }
+    return (0, runtime_tools_js_1.commandExists)("tmux");
 }
 exports.tmuxAvailable = detectTmux();
 if (exports.tmuxAvailable) {
@@ -132,6 +127,11 @@ function setupPtyWebSocket(server) {
             });
         }
         else {
+            if (!shell) {
+                ws.send("No shell is available in the runtime environment.\r\n");
+                ws.close(1011, "No shell available");
+                return;
+            }
             ptyProcess = pty.spawn(shell, [], {
                 name: "xterm-256color",
                 cols: 80,

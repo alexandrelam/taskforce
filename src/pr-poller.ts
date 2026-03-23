@@ -2,6 +2,7 @@ import { execSync } from "child_process";
 import { isNotNull, eq } from "drizzle-orm";
 import { db } from "./db/index.js";
 import { tickets, settings } from "./db/schema.js";
+import { commandExists } from "./runtime-tools.js";
 
 const DEFAULT_INTERVAL = 120000; // 2 minutes
 
@@ -15,12 +16,16 @@ interface PrState {
   error?: string;
 }
 
-function ghAvailable(): boolean {
+function ghAvailability(): { available: boolean; reason: string | null } {
+  if (!commandExists("gh")) {
+    return { available: false, reason: "gh CLI is not installed" };
+  }
+
   try {
     execSync("gh auth status", { stdio: "ignore" });
-    return true;
+    return { available: true, reason: null };
   } catch {
-    return false;
+    return { available: false, reason: "gh CLI is not authenticated" };
   }
 }
 
@@ -124,8 +129,9 @@ function scheduleNext() {
 }
 
 export function startPrPoller() {
-  if (!ghAvailable()) {
-    console.log("PR poller disabled: gh CLI not authenticated");
+  const gh = ghAvailability();
+  if (!gh.available) {
+    console.log(`PR poller disabled: ${gh.reason}`);
     return;
   }
   console.log("PR poller started");

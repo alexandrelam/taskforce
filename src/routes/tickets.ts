@@ -4,6 +4,7 @@ import { spawn, execFileSync } from "child_process";
 import { db } from "../db/index.js";
 import { projects, tickets } from "../db/schema.js";
 import { killTmuxSession } from "../pty.js";
+import { commandExists, missingCommandMessage } from "../runtime-tools.js";
 import {
   slugify,
   createWorktree,
@@ -559,6 +560,11 @@ router.post("/:id/open-editor", async (req: Request<{ id: string }>, res: Respon
 const PR_URL_REGEX = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
 
 router.get("/pr-info", async (req: Request, res: Response) => {
+  if (!commandExists("gh")) {
+    res.status(500).json({ error: missingCommandMessage("gh") });
+    return;
+  }
+
   const url = req.query.url as string | undefined;
 
   if (!url || !PR_URL_REGEX.test(url)) {

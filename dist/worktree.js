@@ -20,6 +20,7 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = require("fs");
 const os_1 = __importDefault(require("os"));
 const pty_js_1 = require("./pty.js");
+const runtime_tools_js_1 = require("./runtime-tools.js");
 /**
  * Convert a ticket title to a filesystem-safe slug
  * Example: "Add User Authentication!" -> "add-user-authentication"
@@ -37,6 +38,9 @@ function slugify(title) {
  * Get the current git branch for a directory
  */
 function getCurrentBranch(cwd) {
+    if (!(0, runtime_tools_js_1.commandExists)("git")) {
+        return null;
+    }
     try {
         const branch = (0, child_process_1.execSync)("git rev-parse --abbrev-ref HEAD", {
             cwd,
@@ -53,6 +57,9 @@ function getCurrentBranch(cwd) {
  * Check if a directory is a git repository
  */
 function isGitRepo(cwd) {
+    if (!(0, runtime_tools_js_1.commandExists)("git")) {
+        return false;
+    }
     try {
         (0, child_process_1.execSync)("git rev-parse --git-dir", {
             cwd,
@@ -73,6 +80,9 @@ function isGitRepo(cwd) {
  * @returns The worktree path or error
  */
 function createWorktree(projectPath, ticketSlug, baseBranch) {
+    if (!(0, runtime_tools_js_1.commandExists)("git")) {
+        return { worktreePath: null, error: (0, runtime_tools_js_1.missingCommandMessage)("git") };
+    }
     // Check if it's a git repo
     if (!isGitRepo(projectPath)) {
         return { worktreePath: null, error: "Project is not a git repository" };
@@ -136,6 +146,9 @@ function runPostWorktreeCommand(cwd, command) {
  * @returns The worktree path or error
  */
 function createWorktreeFromBranch(projectPath, branchName) {
+    if (!(0, runtime_tools_js_1.commandExists)("git")) {
+        return { worktreePath: null, error: (0, runtime_tools_js_1.missingCommandMessage)("git") };
+    }
     if (!isGitRepo(projectPath)) {
         return { worktreePath: null, error: "Project is not a git repository" };
     }
@@ -176,6 +189,9 @@ function createWorktreeFromBranch(projectPath, branchName) {
  * @param worktreePath - The path to the worktree to remove
  */
 function removeWorktree(projectPath, worktreePath) {
+    if (!(0, runtime_tools_js_1.commandExists)("git")) {
+        return { success: false, error: (0, runtime_tools_js_1.missingCommandMessage)("git") };
+    }
     try {
         (0, child_process_1.execSync)(`git worktree remove "${worktreePath}" --force`, {
             cwd: projectPath,

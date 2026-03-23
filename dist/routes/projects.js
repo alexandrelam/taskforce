@@ -6,6 +6,7 @@ const child_process_1 = require("child_process");
 const index_js_1 = require("../db/index.js");
 const schema_js_1 = require("../db/schema.js");
 const pty_js_1 = require("../pty.js");
+const runtime_tools_js_1 = require("../runtime-tools.js");
 const worktree_js_1 = require("../worktree.js");
 const router = (0, express_1.Router)();
 router.get("/", async (_req, res) => {
@@ -99,6 +100,10 @@ router.patch("/:id", async (req, res) => {
 });
 // Git Commit Info API
 router.get("/:id/commit", async (req, res) => {
+    if (!(0, runtime_tools_js_1.commandExists)("git")) {
+        res.status(500).json({ error: (0, runtime_tools_js_1.missingCommandMessage)("git") });
+        return;
+    }
     const { id } = req.params;
     const project = await index_js_1.db.select().from(schema_js_1.projects).where((0, drizzle_orm_1.eq)(schema_js_1.projects.id, id)).limit(1);
     if (!project[0]) {
@@ -121,6 +126,10 @@ router.get("/:id/commit", async (req, res) => {
 });
 // Git Pull API
 router.post("/:id/pull", async (req, res) => {
+    if (!(0, runtime_tools_js_1.commandExists)("git")) {
+        res.status(500).json({ success: false, error: (0, runtime_tools_js_1.missingCommandMessage)("git") });
+        return;
+    }
     const { id } = req.params;
     const project = await index_js_1.db.select().from(schema_js_1.projects).where((0, drizzle_orm_1.eq)(schema_js_1.projects.id, id)).limit(1);
     if (!project[0]) {
@@ -141,6 +150,11 @@ router.post("/:id/pull", async (req, res) => {
 });
 // PR Suggestions API
 router.get("/:id/pr-suggestions", async (req, res) => {
+    if (!(0, runtime_tools_js_1.commandExists)("gh")) {
+        console.warn("[pr-suggestions] gh is not available in the runtime environment");
+        res.json([]);
+        return;
+    }
     const { id } = req.params;
     const project = await index_js_1.db.select().from(schema_js_1.projects).where((0, drizzle_orm_1.eq)(schema_js_1.projects.id, id)).limit(1);
     if (!project[0]) {

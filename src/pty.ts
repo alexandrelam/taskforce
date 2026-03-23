@@ -3,18 +3,14 @@ import * as pty from "node-pty";
 import type { Server, IncomingMessage } from "http";
 import { existsSync } from "fs";
 import { execSync } from "child_process";
+import { commandExists, resolveShell } from "./runtime-tools.js";
 
-const shell = process.platform === "win32" ? "powershell.exe" : process.env.SHELL || "/bin/zsh";
+const shell = process.platform === "win32" ? "powershell.exe" : resolveShell();
 
 // Detect tmux availability at module load
 function detectTmux(): boolean {
   if (process.platform === "win32") return false;
-  try {
-    execSync("which tmux", { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
+  return commandExists("tmux");
 }
 
 export const tmuxAvailable = detectTmux();
@@ -104,6 +100,11 @@ export function setupPtyWebSocket(server: Server): void {
         }
       );
     } else {
+      if (!shell) {
+        ws.send("No shell is available in the runtime environment.\r\n");
+        ws.close(1011, "No shell available");
+        return;
+      }
       ptyProcess = pty.spawn(shell, [], {
         name: "xterm-256color",
         cols: 80,

@@ -6,6 +6,7 @@ const child_process_1 = require("child_process");
 const index_js_1 = require("../db/index.js");
 const schema_js_1 = require("../db/schema.js");
 const pty_js_1 = require("../pty.js");
+const runtime_tools_js_1 = require("../runtime-tools.js");
 const worktree_js_1 = require("../worktree.js");
 const router = (0, express_1.Router)();
 // Constants for setup monitoring
@@ -433,6 +434,10 @@ router.post("/:id/open-editor", async (req, res) => {
 // Get PR info from GitHub URL
 const PR_URL_REGEX = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
 router.get("/pr-info", async (req, res) => {
+    if (!(0, runtime_tools_js_1.commandExists)("gh")) {
+        res.status(500).json({ error: (0, runtime_tools_js_1.missingCommandMessage)("gh") });
+        return;
+    }
     const url = req.query.url;
     if (!url || !PR_URL_REGEX.test(url)) {
         res.status(400).json({ error: "Invalid GitHub PR URL" });

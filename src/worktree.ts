@@ -3,6 +3,7 @@ import path from "path";
 import { existsSync, unlinkSync, readFileSync } from "fs";
 import os from "os";
 import { tmuxAvailable, sanitizeSessionId } from "./pty.js";
+import { commandExists, missingCommandMessage } from "./runtime-tools.js";
 
 /**
  * Convert a ticket title to a filesystem-safe slug
@@ -22,6 +23,10 @@ export function slugify(title: string): string {
  * Get the current git branch for a directory
  */
 export function getCurrentBranch(cwd: string): string | null {
+  if (!commandExists("git")) {
+    return null;
+  }
+
   try {
     const branch = execSync("git rev-parse --abbrev-ref HEAD", {
       cwd,
@@ -38,6 +43,10 @@ export function getCurrentBranch(cwd: string): string | null {
  * Check if a directory is a git repository
  */
 export function isGitRepo(cwd: string): boolean {
+  if (!commandExists("git")) {
+    return false;
+  }
+
   try {
     execSync("git rev-parse --git-dir", {
       cwd,
@@ -67,6 +76,10 @@ export function createWorktree(
   ticketSlug: string,
   baseBranch?: string
 ): WorktreeResult {
+  if (!commandExists("git")) {
+    return { worktreePath: null, error: missingCommandMessage("git") };
+  }
+
   // Check if it's a git repo
   if (!isGitRepo(projectPath)) {
     return { worktreePath: null, error: "Project is not a git repository" };
@@ -140,6 +153,10 @@ export function runPostWorktreeCommand(cwd: string, command: string): PostComman
  * @returns The worktree path or error
  */
 export function createWorktreeFromBranch(projectPath: string, branchName: string): WorktreeResult {
+  if (!commandExists("git")) {
+    return { worktreePath: null, error: missingCommandMessage("git") };
+  }
+
   if (!isGitRepo(projectPath)) {
     return { worktreePath: null, error: "Project is not a git repository" };
   }
@@ -186,6 +203,10 @@ export function removeWorktree(
   projectPath: string,
   worktreePath: string
 ): { success: boolean; error: string | null } {
+  if (!commandExists("git")) {
+    return { success: false, error: missingCommandMessage("git") };
+  }
+
   try {
     execSync(`git worktree remove "${worktreePath}" --force`, {
       cwd: projectPath,

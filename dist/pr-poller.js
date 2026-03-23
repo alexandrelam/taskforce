@@ -5,14 +5,18 @@ const child_process_1 = require("child_process");
 const drizzle_orm_1 = require("drizzle-orm");
 const index_js_1 = require("./db/index.js");
 const schema_js_1 = require("./db/schema.js");
+const runtime_tools_js_1 = require("./runtime-tools.js");
 const DEFAULT_INTERVAL = 120000; // 2 minutes
-function ghAvailable() {
+function ghAvailability() {
+    if (!(0, runtime_tools_js_1.commandExists)("gh")) {
+        return { available: false, reason: "gh CLI is not installed" };
+    }
     try {
         (0, child_process_1.execSync)("gh auth status", { stdio: "ignore" });
-        return true;
+        return { available: true, reason: null };
     }
     catch {
-        return false;
+        return { available: false, reason: "gh CLI is not authenticated" };
     }
 }
 function getInterval() {
@@ -107,8 +111,9 @@ function scheduleNext() {
     }, interval);
 }
 function startPrPoller() {
-    if (!ghAvailable()) {
-        console.log("PR poller disabled: gh CLI not authenticated");
+    const gh = ghAvailability();
+    if (!gh.available) {
+        console.log(`PR poller disabled: ${gh.reason}`);
         return;
     }
     console.log("PR poller started");

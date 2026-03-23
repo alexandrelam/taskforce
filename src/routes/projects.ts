@@ -4,6 +4,7 @@ import { execSync, execFileSync } from "child_process";
 import { db } from "../db/index.js";
 import { projects, tickets } from "../db/schema.js";
 import { killTmuxSession } from "../pty.js";
+import { commandExists, missingCommandMessage } from "../runtime-tools.js";
 import { removeWorktree } from "../worktree.js";
 
 const router = Router();
@@ -131,6 +132,11 @@ router.patch("/:id", async (req: Request<{ id: string }>, res: Response) => {
 
 // Git Commit Info API
 router.get("/:id/commit", async (req: Request<{ id: string }>, res: Response) => {
+  if (!commandExists("git")) {
+    res.status(500).json({ error: missingCommandMessage("git") });
+    return;
+  }
+
   const { id } = req.params;
 
   const project = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
@@ -155,6 +161,11 @@ router.get("/:id/commit", async (req: Request<{ id: string }>, res: Response) =>
 
 // Git Pull API
 router.post("/:id/pull", async (req: Request<{ id: string }>, res: Response) => {
+  if (!commandExists("git")) {
+    res.status(500).json({ success: false, error: missingCommandMessage("git") });
+    return;
+  }
+
   const { id } = req.params;
 
   const project = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
@@ -177,6 +188,12 @@ router.post("/:id/pull", async (req: Request<{ id: string }>, res: Response) => 
 
 // PR Suggestions API
 router.get("/:id/pr-suggestions", async (req: Request<{ id: string }>, res: Response) => {
+  if (!commandExists("gh")) {
+    console.warn("[pr-suggestions] gh is not available in the runtime environment");
+    res.json([]);
+    return;
+  }
+
   const { id } = req.params;
 
   const project = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
