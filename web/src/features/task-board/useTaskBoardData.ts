@@ -48,8 +48,8 @@ function mapTicketsToColumns(tickets: TicketResponse[]): Columns {
 }
 
 export function useTaskBoardData(selectedProjectIds: string[]) {
-  const [columnsByProject, setColumnsByProject] = useState<Record<string, Columns>>({});
-  const [columnEnteredAtByProject, setColumnEnteredAtByProject] = useState<
+  const [storedColumnsByProject, setStoredColumnsByProject] = useState<Record<string, Columns>>({});
+  const [storedColumnEnteredAtByProject, setStoredColumnEnteredAtByProject] = useState<
     Record<string, Record<string, number>>
   >({});
   const previousSetupStatusRef = useRef<Record<string, string>>({});
@@ -57,12 +57,12 @@ export function useTaskBoardData(selectedProjectIds: string[]) {
   const fetchProjectTickets = useCallback(async (projectId: string) => {
     const tickets = await ticketsApi.getByProject(projectId);
 
-    setColumnsByProject((prev) => ({
+    setStoredColumnsByProject((prev) => ({
       ...prev,
       [projectId]: mapTicketsToColumns(tickets),
     }));
 
-    setColumnEnteredAtByProject((prev) => {
+    setStoredColumnEnteredAtByProject((prev) => {
       const now = Date.now();
       const current = { ...(prev[projectId] ?? {}) };
       for (const ticket of tickets) {
@@ -95,10 +95,7 @@ export function useTaskBoardData(selectedProjectIds: string[]) {
   }, []);
 
   useEffect(() => {
-    if (selectedProjectIds.length === 0) {
-      setColumnsByProject({});
-      return;
-    }
+    if (selectedProjectIds.length === 0) return;
 
     let cancelled = false;
 
@@ -121,23 +118,21 @@ export function useTaskBoardData(selectedProjectIds: string[]) {
     };
   }, [fetchProjectTickets, selectedProjectIds]);
 
-  useEffect(() => {
-    setColumnsByProject((prev) => {
-      const next: Record<string, Columns> = {};
-      for (const projectId of selectedProjectIds) {
-        next[projectId] = prev[projectId] ?? createEmptyColumns();
-      }
-      return next;
-    });
+  const columnsByProject = useMemo(() => {
+    const next: Record<string, Columns> = {};
+    for (const projectId of selectedProjectIds) {
+      next[projectId] = storedColumnsByProject[projectId] ?? createEmptyColumns();
+    }
+    return next;
+  }, [selectedProjectIds, storedColumnsByProject]);
 
-    setColumnEnteredAtByProject((prev) => {
-      const next: Record<string, Record<string, number>> = {};
-      for (const projectId of selectedProjectIds) {
-        next[projectId] = prev[projectId] ?? {};
-      }
-      return next;
-    });
-  }, [selectedProjectIds]);
+  const columnEnteredAtByProject = useMemo(() => {
+    const next: Record<string, Record<string, number>> = {};
+    for (const projectId of selectedProjectIds) {
+      next[projectId] = storedColumnEnteredAtByProject[projectId] ?? {};
+    }
+    return next;
+  }, [selectedProjectIds, storedColumnEnteredAtByProject]);
 
   const createTicket = useCallback(
     async (
@@ -218,7 +213,7 @@ export function useTaskBoardData(selectedProjectIds: string[]) {
     (projectId: string, nextColumns: Columns) => {
       const previousColumns = columnsByProject[projectId] ?? INITIAL_COLUMNS;
 
-      setColumnsByProject((prev) => ({
+      setStoredColumnsByProject((prev) => ({
         ...prev,
         [projectId]: nextColumns,
       }));
@@ -233,7 +228,7 @@ export function useTaskBoardData(selectedProjectIds: string[]) {
               console.error("Failed to persist ticket column change", error);
               void fetchProjectTickets(projectId);
             });
-            setColumnEnteredAtByProject((prev) => ({
+            setStoredColumnEnteredAtByProject((prev) => ({
               ...prev,
               [projectId]: {
                 ...(prev[projectId] ?? {}),

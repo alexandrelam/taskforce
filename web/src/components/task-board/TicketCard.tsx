@@ -9,7 +9,7 @@ import {
   GitPullRequest,
   Pencil,
 } from "lucide-react";
-import { formatElapsedTime } from "@/hooks/useTimer";
+import { formatElapsedTime, useTimer } from "@/hooks/useTimer";
 import type { Task, PrState } from "@/types";
 import { Ripple } from "@/components/ui/ripple";
 
@@ -69,6 +69,7 @@ export function TicketCard({
   onOpenEditor,
   onEditTicket,
 }: TicketCardProps) {
+  const now = useTimer();
   const isSetupInProgress =
     task.setupStatus === "pending" ||
     task.setupStatus === "creating_worktree" ||
@@ -222,7 +223,7 @@ export function TicketCard({
       {!isSetupInProgress && !isSetupFailed && columnEnteredAt && (
         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
           <Clock className="h-3 w-3" />
-          {formatElapsedTime(Date.now() - columnEnteredAt)}
+          {formatElapsedTime(now - columnEnteredAt)}
         </div>
       )}
     </KanbanItem>

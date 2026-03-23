@@ -38,11 +38,11 @@ describe("api client", () => {
       })
     );
 
-    const { ticketsApi, ApiError } = await import("./api");
+    const { ticketsApi } = await import("./api");
     await expect(ticketsApi.getPrInfo("https://github.com/acme/app/pull/1")).rejects.toMatchObject({
       message: "Service unavailable",
       status: 503,
-    } satisfies Partial<InstanceType<typeof ApiError>>);
+    } satisfies Partial<Error & { status: number }>);
   });
 
   it("treats 204 responses as undefined for mutating endpoints", async () => {
