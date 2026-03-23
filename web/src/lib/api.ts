@@ -1,11 +1,10 @@
 import type { Project, TicketResponse, CommitInfo, Pane } from "@/types";
-
-const API_BASE = "http://localhost:3325";
+import { buildApiUrl } from "@/lib/runtime";
 
 // Projects API
 export const projectsApi = {
   getAll: async (): Promise<Project[]> => {
-    const res = await fetch(`${API_BASE}/api/projects`);
+    const res = await fetch(buildApiUrl("/api/projects"));
     return res.json();
   },
 
@@ -15,7 +14,7 @@ export const projectsApi = {
     postWorktreeCommand?: string | null;
     useWorktrees?: boolean;
   }): Promise<Project> => {
-    const res = await fetch(`${API_BASE}/api/projects`, {
+    const res = await fetch(buildApiUrl("/api/projects"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -32,7 +31,7 @@ export const projectsApi = {
       useWorktrees?: boolean;
     }
   ): Promise<void> => {
-    await fetch(`${API_BASE}/api/projects/${id}`, {
+    await fetch(buildApiUrl(`/api/projects/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -40,11 +39,11 @@ export const projectsApi = {
   },
 
   delete: async (id: string): Promise<void> => {
-    await fetch(`${API_BASE}/api/projects/${id}`, { method: "DELETE" });
+    await fetch(buildApiUrl(`/api/projects/${id}`), { method: "DELETE" });
   },
 
   getCommit: async (id: string): Promise<CommitInfo | null> => {
-    const res = await fetch(`${API_BASE}/api/projects/${id}/commit`);
+    const res = await fetch(buildApiUrl(`/api/projects/${id}/commit`));
     if (res.ok) {
       return res.json();
     }
@@ -52,7 +51,7 @@ export const projectsApi = {
   },
 
   pull: async (id: string): Promise<{ success: boolean; output?: string; error?: string }> => {
-    const res = await fetch(`${API_BASE}/api/projects/${id}/pull`, {
+    const res = await fetch(buildApiUrl(`/api/projects/${id}/pull`), {
       method: "POST",
     });
     return res.json();
@@ -61,7 +60,7 @@ export const projectsApi = {
   getPrSuggestions: async (
     projectId: string
   ): Promise<Array<{ title: string; url: string; headRefName: string; number: number }>> => {
-    const res = await fetch(`${API_BASE}/api/projects/${projectId}/pr-suggestions`);
+    const res = await fetch(buildApiUrl(`/api/projects/${projectId}/pr-suggestions`));
     if (!res.ok) return [];
     return res.json();
   },
@@ -70,7 +69,7 @@ export const projectsApi = {
 // Tickets API
 export const ticketsApi = {
   getByProject: async (projectId: string): Promise<TicketResponse[]> => {
-    const res = await fetch(`${API_BASE}/api/tickets?projectId=${projectId}`);
+    const res = await fetch(buildApiUrl(`/api/tickets?projectId=${projectId}`));
     return res.json();
   },
 
@@ -82,7 +81,7 @@ export const ticketsApi = {
     prLink?: string | null;
     baseBranch?: string | null;
   }): Promise<TicketResponse> => {
-    const res = await fetch(`${API_BASE}/api/tickets`, {
+    const res = await fetch(buildApiUrl("/api/tickets"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -97,7 +96,7 @@ export const ticketsApi = {
     runPostCommand?: boolean;
     prLink?: string | null;
   }): Promise<TicketResponse> => {
-    const res = await fetch(`${API_BASE}/api/tickets/from-branch`, {
+    const res = await fetch(buildApiUrl("/api/tickets/from-branch"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -107,9 +106,9 @@ export const ticketsApi = {
 
   update: async (
     id: string,
-    data: { column?: string; description?: string; prLink?: string }
+    data: { column?: string; description?: string | null; prLink?: string | null }
   ): Promise<void> => {
-    await fetch(`${API_BASE}/api/tickets/${id}`, {
+    await fetch(buildApiUrl(`/api/tickets/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -117,24 +116,24 @@ export const ticketsApi = {
   },
 
   delete: async (id: string): Promise<void> => {
-    await fetch(`${API_BASE}/api/tickets/${id}`, { method: "DELETE" });
+    await fetch(buildApiUrl(`/api/tickets/${id}`), { method: "DELETE" });
   },
 
   clearOverride: async (id: string): Promise<void> => {
-    await fetch(`${API_BASE}/api/tickets/${id}/clear-override`, {
+    await fetch(buildApiUrl(`/api/tickets/${id}/clear-override`), {
       method: "PATCH",
     });
   },
 
   openEditor: async (id: string): Promise<{ success: boolean; error?: string }> => {
-    const res = await fetch(`${API_BASE}/api/tickets/${id}/open-editor`, {
+    const res = await fetch(buildApiUrl(`/api/tickets/${id}/open-editor`), {
       method: "POST",
     });
     return res.json();
   },
 
   getPrInfo: async (url: string): Promise<{ title: string; headRefName: string }> => {
-    const res = await fetch(`${API_BASE}/api/tickets/pr-info?url=${encodeURIComponent(url)}`);
+    const res = await fetch(buildApiUrl(`/api/tickets/pr-info?url=${encodeURIComponent(url)}`));
     if (!res.ok) {
       const data = await res.json();
       throw new Error(data.error || "Failed to fetch PR info");
@@ -146,12 +145,12 @@ export const ticketsApi = {
 // Settings API
 export const settingsApi = {
   get: async (key: string): Promise<{ value: string | null }> => {
-    const res = await fetch(`${API_BASE}/api/settings/${key}`);
+    const res = await fetch(buildApiUrl(`/api/settings/${key}`));
     return res.json();
   },
 
   set: async (key: string, value: string): Promise<void> => {
-    await fetch(`${API_BASE}/api/settings/${key}`, {
+    await fetch(buildApiUrl(`/api/settings/${key}`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ value }),

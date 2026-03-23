@@ -2,9 +2,8 @@ import { useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { useTheme } from "next-themes";
+import { buildWebSocketUrl } from "@/lib/runtime";
 import "@xterm/xterm/css/xterm.css";
-
-const WS_BASE = "ws://localhost:3325";
 
 const THEMES = {
   light: {
@@ -83,8 +82,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     if (sessionId) {
       params.set("sessionId", sessionId);
     }
-    const queryString = params.toString();
-    const wsUrl = queryString ? `${WS_BASE}/pty?${queryString}` : `${WS_BASE}/pty`;
+    const wsUrl = buildWebSocketUrl("/pty", params);
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;

@@ -1,0 +1,14 @@
+services:
+  taskforce:
+    build:
+      context: .
+    ports:
+      - "3325:3325"
+    environment:
+      PORT: "3325"
+      DATABASE_PATH: /app/data/sqlite.db
+    volumes:
+      - taskforce-data:/app/data
+
+volumes:
+  taskforce-data:

@@ -16,9 +16,11 @@ All hooks run in the background with `&` for non-blocking execution.
 
 ## Prerequisites
 
-- The tracking system server must be running (`npm run dev`)
+- The tracking system server must be running
 - Tickets must be created through the UI (they get assigned a worktree path)
 - You must be running Claude Code from within a ticket's worktree directory
+
+For local development, `http://localhost:3325` is correct. For a production or Docker deployment, replace that origin with the URL where the app is actually running.
 
 ## Hook Configuration
 
@@ -198,7 +200,7 @@ curl -X POST http://localhost:3325/api/tickets/track/stop \
 
 ### Server not responding
 
-1. Ensure the server is running: `npm run dev`
+1. Ensure the server is running: `npm run dev`, `npm start`, or `docker compose up`
 2. Check that port 3325 is accessible
 3. Look for errors in the server console
 

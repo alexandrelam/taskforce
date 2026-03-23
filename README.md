@@ -31,28 +31,60 @@
 - Git
 - tmux (recommended - used for persistent terminal sessions and async post-worktree commands)
 
-## Quick Start
+## Development
 
 ```bash
-# Clone the repository
 git clone https://github.com/alexandrelam/10x-claude.git
 cd 10x-claude
 
-# Install dependencies
 npm install
 cd web && npm install && cd ..
 
-# Initialize database
 npm run db:push
 
-# Start backend (terminal 1)
+# Terminal 1
 npm run dev
 
-# Start frontend (terminal 2)
+# Terminal 2
 cd web && npm run dev
 ```
 
 Open http://localhost:3326 and create your first project in Settings.
+
+The frontend development server proxies `/api`, `/pty`, and `/health` to the backend on port `3325`, so the browser-facing app still uses same-origin paths.
+
+## Production / Single-Server Run
+
+The production app is a single Node server that serves both the API and the built frontend from one URL.
+
+```bash
+npm install
+cd web && npm install && cd ..
+npm run db:push
+npm run build
+npm start
+```
+
+Open http://localhost:3325.
+
+### Runtime Notes
+
+- `PORT` defaults to `3325`
+- `DATABASE_PATH` defaults to `data/sqlite.db`
+- `data/` should be persisted if you want the SQLite database to survive restarts
+- terminal/worktree features still depend on host tools such as `git`, a shell, and optionally `tmux`
+
+## Docker
+
+Docker is supported as a packaging and deployment option without changing the app architecture.
+
+```bash
+docker compose up --build
+```
+
+Then open http://localhost:3325.
+
+The provided compose file persists SQLite data in a named Docker volume. If you need worktree and terminal operations against host repositories, mount the relevant host directories and ensure the container has access to the required tools and permissions.
 
 ## Claude Code Integration
 
@@ -116,6 +148,8 @@ Add these hooks to your Claude Code config (`.claude/settings.json`) to auto-tra
 ```
 
 See [HOOKS.md](HOOKS.md) for detailed configuration options and troubleshooting.
+
+If the app is not running on `http://localhost:3325`, replace that origin in the hook commands with your deployed app URL.
 
 ## Tech Stack
 

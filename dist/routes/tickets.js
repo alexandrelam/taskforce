@@ -430,5 +430,26 @@ router.post("/:id/open-editor", async (req, res) => {
         res.status(500).json({ success: false, error: `Failed to launch editor: ${errorMessage}` });
     }
 });
+// Get PR info from GitHub URL
+const PR_URL_REGEX = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
+router.get("/pr-info", async (req, res) => {
+    const url = req.query.url;
+    if (!url || !PR_URL_REGEX.test(url)) {
+        res.status(400).json({ error: "Invalid GitHub PR URL" });
+        return;
+    }
+    try {
+        const output = (0, child_process_1.execFileSync)("gh", ["pr", "view", url, "--json", "title,headRefName"], {
+            timeout: 10000,
+            encoding: "utf-8",
+        });
+        const data = JSON.parse(output);
+        res.json({ title: data.title, headRefName: data.headRefName });
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to fetch PR info";
+        res.status(500).json({ error: message });
+    }
+});
 exports.default = router;
 //# sourceMappingURL=tickets.js.map

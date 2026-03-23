@@ -1,4 +1,5 @@
-import { CSSProperties, ReactElement, ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, ReactElement, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 

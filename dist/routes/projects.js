@@ -139,5 +139,43 @@ router.post("/:id/pull", async (req, res) => {
         res.status(500).json({ success: false, error: errorMessage });
     }
 });
+// PR Suggestions API
+router.get("/:id/pr-suggestions", async (req, res) => {
+    const { id } = req.params;
+    const project = await index_js_1.db.select().from(schema_js_1.projects).where((0, drizzle_orm_1.eq)(schema_js_1.projects.id, id)).limit(1);
+    if (!project[0]) {
+        res.status(404).json({ error: "Project not found" });
+        return;
+    }
+    try {
+        const output = (0, child_process_1.execFileSync)("gh", [
+            "pr",
+            "list",
+            "--author",
+            "@me",
+            "--state",
+            "open",
+            "--json",
+            "title,url,headRefName,number,createdAt",
+            "--limit",
+            "20",
+        ], { cwd: project[0].path, timeout: 10000 });
+        const prs = JSON.parse(output.toString());
+        const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const recent = prs.filter((pr) => new Date(pr.createdAt).getTime() >= cutoff);
+        const existingTickets = await index_js_1.db
+            .select({ prLink: schema_js_1.tickets.prLink })
+            .from(schema_js_1.tickets)
+            .where((0, drizzle_orm_1.eq)(schema_js_1.tickets.projectId, id));
+        const existingLinks = new Set(existingTickets.map((t) => t.prLink).filter(Boolean));
+        const suggestions = recent
+            .filter((pr) => !existingLinks.has(pr.url))
+            .map(({ title, url, headRefName, number }) => ({ title, url, headRefName, number }));
+        res.json(suggestions);
+    }
+    catch {
+        res.json([]);
+    }
+});
 exports.default = router;
 //# sourceMappingURL=projects.js.map

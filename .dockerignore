@@ -1,0 +1,8 @@
+node_modules
+web/node_modules
+dist
+web/dist
+.git
+.claude
+openspec
+data/*.db

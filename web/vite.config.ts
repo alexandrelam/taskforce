@@ -13,5 +13,19 @@ export default defineConfig({
   },
   server: {
     port: 3326,
+    proxy: {
+      "/api": {
+        target: "http://localhost:3325",
+        changeOrigin: true,
+      },
+      "/health": {
+        target: "http://localhost:3325",
+        changeOrigin: true,
+      },
+      "/pty": {
+        target: "ws://localhost:3325",
+        ws: true,
+      },
+    },
   },
 });

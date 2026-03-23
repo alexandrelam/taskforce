@@ -39,7 +39,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.db = void 0;
 const better_sqlite3_1 = __importDefault(require("better-sqlite3"));
 const better_sqlite3_2 = require("drizzle-orm/better-sqlite3");
+const fs_1 = require("fs");
+const path_1 = __importDefault(require("path"));
 const schema = __importStar(require("./schema.js"));
-const sqlite = new better_sqlite3_1.default("data/sqlite.db");
+const databasePath = process.env.DATABASE_PATH || "data/sqlite.db";
+(0, fs_1.mkdirSync)(path_1.default.dirname(databasePath), { recursive: true });
+const sqlite = new better_sqlite3_1.default(databasePath);
 exports.db = (0, better_sqlite3_2.drizzle)(sqlite, { schema });
 //# sourceMappingURL=index.js.map
