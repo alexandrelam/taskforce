@@ -13,5 +13,11 @@ export default defineConfig({
   },
   server: {
     port: 3326,
+    proxy: {
+      "/api": {
+        target: "http://localhost:3325",
+        changeOrigin: true,
+      },
+    },
   },
 });
