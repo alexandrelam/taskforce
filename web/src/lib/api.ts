@@ -9,6 +9,17 @@ export class ApiError extends Error {
   }
 }
 
+const DEFAULT_API_BASE_URL = "http://localhost:3325";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, "");
+
+function toApiUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) {
+    return path;
+  }
+
+  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 async function parseResponse<T>(res: Response): Promise<T> {
   if (res.status === 204) {
     return undefined as T;
@@ -32,7 +43,7 @@ async function parseResponse<T>(res: Response): Promise<T> {
 }
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, init);
+  const res = await fetch(toApiUrl(path), init);
   return parseResponse<T>(res);
 }
 
