@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useReducer } from "react";
 import { Settings, FolderKanban, Cog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,29 +42,129 @@ interface SettingsDialogProps {
   onProjectsChange?: () => void;
 }
 
+interface SettingsDialogState {
+  open: boolean;
+  activeSection: SectionName;
+  projects: Project[];
+  editingCommand: {
+    projectId: string | null;
+    value: string;
+  };
+  prPollMinutes: string;
+}
+
+type SettingsDialogAction =
+  | { type: "setOpen"; open: boolean }
+  | { type: "setActiveSection"; section: SectionName }
+  | { type: "setProjects"; projects: Project[] }
+  | { type: "startCommandEdit"; projectId: string; value: string }
+  | { type: "changeCommandEdit"; value: string }
+  | { type: "finishCommandEdit" }
+  | { type: "setPrPollMinutes"; value: string }
+  | { type: "hydrateOnOpen"; projects: Project[]; prPollMinutes: string };
+
+const initialState: SettingsDialogState = {
+  open: false,
+  activeSection: "General",
+  projects: [],
+  editingCommand: {
+    projectId: null,
+    value: "",
+  },
+  prPollMinutes: "2",
+};
+
+function settingsDialogReducer(
+  state: SettingsDialogState,
+  action: SettingsDialogAction
+): SettingsDialogState {
+  switch (action.type) {
+    case "setOpen":
+      return {
+        ...state,
+        open: action.open,
+        editingCommand: action.open ? state.editingCommand : initialState.editingCommand,
+      };
+    case "setActiveSection":
+      return { ...state, activeSection: action.section };
+    case "setProjects":
+      return { ...state, projects: action.projects };
+    case "startCommandEdit":
+      return {
+        ...state,
+        editingCommand: {
+          projectId: action.projectId,
+          value: action.value,
+        },
+      };
+    case "changeCommandEdit":
+      if (!state.editingCommand.projectId) {
+        return state;
+      }
+
+      return {
+        ...state,
+        editingCommand: {
+          ...state.editingCommand,
+          value: action.value,
+        },
+      };
+    case "finishCommandEdit":
+      return {
+        ...state,
+        editingCommand: initialState.editingCommand,
+      };
+    case "setPrPollMinutes":
+      return { ...state, prPollMinutes: action.value };
+    case "hydrateOnOpen":
+      return {
+        ...state,
+        open: true,
+        projects: action.projects,
+        prPollMinutes: action.prPollMinutes,
+        editingCommand: initialState.editingCommand,
+      };
+    default:
+      return state;
+  }
+}
+
 export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<SectionName>("General");
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [editingCommandId, setEditingCommandId] = useState<string | null>(null);
-  const [editingCommandValue, setEditingCommandValue] = useState("");
-  const [prPollMinutes, setPrPollMinutes] = useState("2");
+  const [state, dispatch] = useReducer(settingsDialogReducer, initialState);
 
   const fetchProjects = async () => {
     const data = await projectsApi.getAll();
-    setProjects(data);
+    dispatch({ type: "setProjects", projects: data });
+    return data;
   };
 
-  useEffect(() => {
-    if (open) {
-      fetchProjects();
-      settingsApi.get("prPollInterval").then(({ value }) => {
-        if (value) {
-          setPrPollMinutes(String(parseInt(value, 10) / 60000));
-        }
-      });
+  const getPrPollMinutes = async () => {
+    const { value } = await settingsApi.get("prPollInterval");
+    if (!value) {
+      return initialState.prPollMinutes;
     }
-  }, [open]);
+
+    const parsedMilliseconds = parseInt(value, 10);
+    if (Number.isNaN(parsedMilliseconds)) {
+      return initialState.prPollMinutes;
+    }
+
+    return String(parsedMilliseconds / 60000);
+  };
+
+  const handleOpenChange = async (nextOpen: boolean) => {
+    if (!nextOpen) {
+      dispatch({ type: "setOpen", open: false });
+      return;
+    }
+
+    const [projects, prPollMinutes] = await Promise.all([fetchProjects(), getPrPollMinutes()]);
+    dispatch({
+      type: "hydrateOnOpen",
+      projects,
+      prPollMinutes,
+    });
+  };
 
   const handleSaveCommand = async (projectId: string, command: string) => {
     await projectsApi.update(projectId, { postWorktreeCommand: command });
@@ -80,7 +180,7 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
   };
 
   const handleAddPane = async (projectId: string, paneName: string): Promise<boolean> => {
-    const project = projects.find((p) => p.id === projectId);
+    const project = state.projects.find((p) => p.id === projectId);
     if (!project) return false;
 
     const newPanes = [...project.panes, { name: paneName }];
@@ -91,7 +191,7 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
   };
 
   const handleRemovePane = async (projectId: string, paneName: string) => {
-    const project = projects.find((p) => p.id === projectId);
+    const project = state.projects.find((p) => p.id === projectId);
     if (!project) return;
 
     const newPanes = project.panes.filter((p) => p.name !== paneName);
@@ -129,14 +229,14 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
   };
 
   const handleEditCommandBlur = () => {
-    if (editingCommandId) {
-      handleSaveCommand(editingCommandId, editingCommandValue);
-      setEditingCommandId(null);
+    if (state.editingCommand.projectId) {
+      void handleSaveCommand(state.editingCommand.projectId, state.editingCommand.value);
+      dispatch({ type: "finishCommandEdit" });
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={state.open} onOpenChange={(nextOpen) => void handleOpenChange(nextOpen)}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon">
           <Settings className="h-5 w-5" />
@@ -156,8 +256,8 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
                     {navItems.map((item) => (
                       <SidebarMenuItem key={item.name}>
                         <SidebarMenuButton
-                          isActive={activeSection === item.name}
-                          onClick={() => setActiveSection(item.name)}
+                          isActive={state.activeSection === item.name}
+                          onClick={() => dispatch({ type: "setActiveSection", section: item.name })}
                         >
                           <item.icon />
                           <span>{item.name}</span>
@@ -174,13 +274,13 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem>
-                    <BreadcrumbPage>{activeSection}</BreadcrumbPage>
+                    <BreadcrumbPage>{state.activeSection}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
             </header>
             <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
-              {activeSection === "General" && (
+              {state.activeSection === "General" && (
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="pr-poll-interval">PR status check interval (minutes)</Label>
@@ -189,11 +289,13 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
                       type="number"
                       min="0.5"
                       step="0.5"
-                      value={prPollMinutes}
-                      onChange={(e) => setPrPollMinutes(e.target.value)}
+                      value={state.prPollMinutes}
+                      onChange={(e) =>
+                        dispatch({ type: "setPrPollMinutes", value: e.target.value })
+                      }
                       onBlur={() => {
-                        const mins = Math.max(0.5, parseFloat(prPollMinutes) || 2);
-                        setPrPollMinutes(String(mins));
+                        const mins = Math.max(0.5, parseFloat(state.prPollMinutes) || 2);
+                        dispatch({ type: "setPrPollMinutes", value: String(mins) });
                         settingsApi.set("prPollInterval", String(mins * 60000));
                       }}
                       className="w-32"
@@ -205,27 +307,28 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
                   </div>
                 </div>
               )}
-              {activeSection === "Projects" && (
+              {state.activeSection === "Projects" && (
                 <>
                   <div className="space-y-4">
                     <Label>Existing Projects</Label>
-                    {projects.length === 0 ? (
+                    {state.projects.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
                         No projects yet. Create one below.
                       </p>
                     ) : (
                       <div className="space-y-3">
-                        {projects.map((project) => (
+                        {state.projects.map((project) => (
                           <ProjectCard
                             key={project.id}
                             project={project}
-                            editingCommandId={editingCommandId}
-                            editingCommandValue={editingCommandValue}
+                            editingCommandId={state.editingCommand.projectId}
+                            editingCommandValue={state.editingCommand.value}
                             onEditCommandStart={(id, value) => {
-                              setEditingCommandId(id);
-                              setEditingCommandValue(value);
+                              dispatch({ type: "startCommandEdit", projectId: id, value });
                             }}
-                            onEditCommandChange={setEditingCommandValue}
+                            onEditCommandChange={(value) =>
+                              dispatch({ type: "changeCommandEdit", value })
+                            }
                             onEditCommandBlur={handleEditCommandBlur}
                             onSaveEditor={handleSaveEditor}
                             onAddPane={handleAddPane}

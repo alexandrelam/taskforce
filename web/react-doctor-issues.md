@@ -14,7 +14,7 @@ Summary:
 
 ## State Management
 
-- [ ] Refactor `src/components/SettingsDialog.tsx:45` to reduce `useState` count and consider `useReducer` for related state.
+- [x] Refactor `src/components/SettingsDialog.tsx:45` to reduce `useState` count and consider `useReducer` for related state.
 - [ ] Refactor `src/components/task-board/ProjectBoard.tsx:56` to reduce `useState` count and consider `useReducer` for related state.
 - [ ] Refactor `src/components/task-board/ProjectBoard.tsx:331` to reduce `useState` count and consider `useReducer` for related state.
 - [ ] Refactor `src/components/task-board/dialogs/OpenBranchDialog.tsx:21` to reduce `useState` count and consider `useReducer` for related state.
@@ -23,7 +23,7 @@ Summary:
 
 ## Effects Used As Event Handlers
 
-- [ ] Move `useEffect` event-like logic in `src/components/SettingsDialog.tsx:58` into the actual event handler.
+- [x] Move `useEffect` event-like logic in `src/components/SettingsDialog.tsx:58` into the actual event handler.
 - [ ] Move `useEffect` event-like logic in `src/components/task-board/dialogs/EditTicketDialog.tsx:20` into the actual event handler.
 
 ## Accessibility
