@@ -58,6 +58,8 @@ export interface TicketResponse {
   id: string;
   title: string;
   column: string;
+  createdAt?: number;
+  projectId?: string | null;
   worktreePath?: string | null;
   isMain?: boolean | null;
   setupStatus?: SetupStatus;

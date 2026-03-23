@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { TerminalManager, type TerminalManagerHandle } from "@/components/TerminalManager";
 import { TerminalTabs } from "@/components/TerminalTabs";
 import type { Task, Project, Pane } from "@/types";
