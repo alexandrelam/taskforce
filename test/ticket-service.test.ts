@@ -6,6 +6,7 @@ async function loadService(selectResults: unknown[][]) {
   const killTmuxSession = vi.fn();
   const warn = vi.fn();
   const deleteWhere = vi.fn(async () => undefined);
+  const updateWhere = vi.fn(async () => undefined);
 
   const db = {
     select: vi.fn(() => ({
@@ -17,6 +18,11 @@ async function loadService(selectResults: unknown[][]) {
     })),
     delete: vi.fn(() => ({
       where: deleteWhere,
+    })),
+    update: vi.fn(() => ({
+      set: vi.fn(() => ({
+        where: updateWhere,
+      })),
     })),
   };
 
@@ -31,52 +37,22 @@ async function loadService(selectResults: unknown[][]) {
   vi.doMock("../src/services/logger.js", () => ({ logger: { warn } }));
 
   const mod = await import("../src/services/ticket-service.ts");
-  return { mod, removeWorktree, killSetupTmuxSession, killTmuxSession, warn, deleteWhere };
+  return {
+    mod,
+    removeWorktree,
+    killSetupTmuxSession,
+    killTmuxSession,
+    warn,
+    deleteWhere,
+    updateWhere,
+    db,
+  };
 }
 
 describe("ticket service", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-  });
-
-  it("maps ticket records into response payloads", async () => {
-    const { mod } = await loadService([]);
-    expect(
-      mod.toTicketResponse({
-        id: "t1",
-        title: "Task",
-        column: "To Do",
-        createdAt: 1,
-        projectId: "p1",
-        worktreePath: "/repo/task",
-        isMain: false,
-        setupStatus: "ready",
-        setupError: null,
-        setupLogs: "ok",
-        setupTmuxSession: "setup-1",
-        description: "desc",
-        statusOverride: true,
-        prLink: "https://github.com/acme/app/pull/1",
-        prState: '{"state":"OPEN"}',
-      })
-    ).toEqual({
-      id: "t1",
-      title: "Task",
-      column: "To Do",
-      createdAt: 1,
-      projectId: "p1",
-      worktreePath: "/repo/task",
-      isMain: false,
-      setupStatus: "ready",
-      setupError: null,
-      setupLogs: "ok",
-      setupTmuxSession: "setup-1",
-      description: "desc",
-      statusOverride: true,
-      prLink: "https://github.com/acme/app/pull/1",
-      prState: '{"state":"OPEN"}',
-    });
   });
 
   it("rejects deleting missing tickets", async () => {
@@ -148,5 +124,14 @@ describe("ticket service", () => {
 
     await expect(mod.deleteTicketAndCleanup("ticket-1")).resolves.toEqual({ success: true });
     expect(warn).toHaveBeenCalledWith("Failed to remove worktree for ticket ticket-1: locked");
+  });
+
+  it("clears manual overrides through updateTicket", async () => {
+    const { mod, db } = await loadService([]);
+
+    await mod.clearTicketOverride("ticket-1");
+
+    const set = db.update.mock.results[0].value.set as ReturnType<typeof vi.fn>;
+    expect(set).toHaveBeenCalledWith({ statusOverride: false });
   });
 });

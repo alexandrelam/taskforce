@@ -79,9 +79,10 @@ describe("useTickets", () => {
   });
 
   it("shows a toast when setup transitions from running to failed", async () => {
-    const intervalCallbacks: Array<() => void> = [];
+    let poll: (() => void) | undefined;
+    const clearIntervalSpy = vi.spyOn(globalThis, "clearInterval");
     vi.spyOn(globalThis, "setInterval").mockImplementation(((callback: TimerHandler) => {
-      intervalCallbacks.push(callback as () => void);
+      poll = callback as () => void;
       return 1 as unknown as ReturnType<typeof setInterval>;
     }) as typeof setInterval);
     getByProject
@@ -99,14 +100,14 @@ describe("useTickets", () => {
       ]);
 
     const { useTickets } = await import("./useTickets");
-    renderHook(() => useTickets("project-1"));
+    const { unmount } = renderHook(() => useTickets("project-1"));
 
     await act(async () => {
       await Promise.resolve();
     });
 
     await act(async () => {
-      intervalCallbacks[0]?.();
+      poll?.();
       await Promise.resolve();
     });
 
@@ -115,6 +116,9 @@ describe("useTickets", () => {
         description: "npm install failed",
       });
     });
+
+    unmount();
+    expect(clearIntervalSpy).toHaveBeenCalled();
   });
 
   it("optimistically adds created tickets and persists column moves", async () => {
