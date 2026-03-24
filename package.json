@@ -8,6 +8,9 @@
     "build": "tsc && cd web && npm run build",
     "start": "node dist/index.js",
     "test": "npm run test:backend && npm --prefix web test",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
     "test:backend": "vitest run",
     "test:backend:watch": "vitest",
     "lint": "eslint .",
@@ -31,6 +34,7 @@
   },
   "homepage": "https://github.com/alexandrelam/10x-claude#readme",
   "dependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/ws": "^8.18.1",
     "better-sqlite3": "^12.6.0",
     "cors": "^2.8.5",
