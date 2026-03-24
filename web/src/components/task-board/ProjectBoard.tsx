@@ -20,10 +20,6 @@ import { useGitOperations } from "@/hooks/useGitOperations";
 import { usePrSuggestions, type PrSuggestion } from "@/hooks/usePrSuggestions";
 import { ticketsApi } from "@/lib/api";
 
-import { useStacks } from "@/hooks/useStacks";
-import { StackConnectorProvider } from "@/contexts/StackConnectorContext";
-import { StackConnectors } from "./StackConnectors";
-import { StackHeader } from "./StackHeader";
 import { TicketCard } from "./TicketCard";
 import { DeleteTicketDialog } from "./dialogs/DeleteTicketDialog";
 import { EditTicketDialog } from "./dialogs/EditTicketDialog";
@@ -489,48 +485,6 @@ export function ProjectBoard({
 }: ProjectBoardProps) {
   const { commitInfo, isPulling, pull } = useGitOperations(project.id);
   const { suggestions, setSuggestions } = usePrSuggestions(project.id);
-  const { stacks, stackByTicketId, memberByTicketId } = useStacks(columns);
-
-  // Stack UI state
-  const [hoveredStackId, setHoveredStackId] = useState<string | null>(null);
-  const boardContainerRef = useRef<HTMLDivElement>(null);
-  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Build a task lookup map for StackHeader
-  const taskMap = useMemo(() => {
-    const map = new Map<string, Task>();
-    for (const tasks of Object.values(columns)) {
-      for (const t of tasks) {
-        map.set(t.id, t);
-      }
-    }
-    return map;
-  }, [columns]);
-
-  // Delayed hover: gives user time to move mouse to the StackHeader
-  const handleStackHover = useCallback(
-    (ticketId: string | null) => {
-      clearTimeout(hoverTimeoutRef.current ?? undefined);
-      if (!ticketId) {
-        hoverTimeoutRef.current = setTimeout(() => setHoveredStackId(null), 300);
-        return;
-      }
-      const stack = stackByTicketId.get(ticketId);
-      setHoveredStackId(stack?.id || null);
-    },
-    [stackByTicketId]
-  );
-
-  // Called by StackHeader to keep itself visible while hovered
-  const handleStackHeaderEnter = useCallback(() => {
-    clearTimeout(hoverTimeoutRef.current ?? undefined);
-  }, []);
-
-  const handleStackHeaderLeave = useCallback(() => {
-    hoverTimeoutRef.current = setTimeout(() => setHoveredStackId(null), 300);
-  }, []);
-
-  const hoveredStack = hoveredStackId ? stacks.find((s) => s.id === hoveredStackId) : null;
 
   // Local UI state
   const [uiState, dispatch] = useReducer(projectBoardUiReducer, initialProjectBoardUiState);

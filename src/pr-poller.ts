@@ -11,8 +11,6 @@ interface PrState {
   reviewDecision: string | null;
   checksStatus: string | null;
   isDraft: boolean;
-  headRefName: string | null;
-  baseRefName: string | null;
   lastCheckedAt: number;
   error?: string;
 }
@@ -59,7 +57,7 @@ function deriveChecksStatus(statusCheckRollup: Record<string, string>[] | null):
 function checkPr(url: string): PrState {
   try {
     const raw = execSync(
-      `gh pr view "${url}" --json state,mergeable,reviewDecision,statusCheckRollup,isDraft,headRefName,baseRefName`,
+      `gh pr view "${url}" --json state,mergeable,reviewDecision,statusCheckRollup,isDraft`,
       { encoding: "utf-8", timeout: 15000 }
     );
     const data = JSON.parse(raw);
@@ -69,8 +67,6 @@ function checkPr(url: string): PrState {
       reviewDecision: data.reviewDecision || null,
       checksStatus: deriveChecksStatus(data.statusCheckRollup),
       isDraft: data.isDraft,
-      headRefName: data.headRefName || null,
-      baseRefName: data.baseRefName || null,
       lastCheckedAt: Date.now(),
     };
   } catch (err: unknown) {
@@ -80,8 +76,6 @@ function checkPr(url: string): PrState {
       reviewDecision: null,
       checksStatus: null,
       isDraft: false,
-      headRefName: null,
-      baseRefName: null,
       lastCheckedAt: Date.now(),
       error: err instanceof Error ? err.message : String(err),
     };
@@ -98,14 +92,11 @@ function tick() {
   for (const row of rows) {
     if (!row.prLink) continue;
 
-    // Skip MERGED/CLOSED PRs checked within last hour
+    // Skip MERGED PRs checked within last hour (CLOSED can be reopened)
     if (row.prState) {
       try {
         const prev: PrState = JSON.parse(row.prState);
-        if (
-          (prev.state === "MERGED" || prev.state === "CLOSED") &&
-          Date.now() - prev.lastCheckedAt < 3600000
-        ) {
+        if (prev.state === "MERGED" && Date.now() - prev.lastCheckedAt < 3600000) {
           continue;
         }
       } catch {
