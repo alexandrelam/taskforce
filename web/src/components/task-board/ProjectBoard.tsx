@@ -188,7 +188,11 @@ function ControlledCreateTicketDialog({
               />
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={state.isCreating}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={state.isCreating || !state.title.trim()}
+          >
             {state.isCreating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -313,7 +317,11 @@ function ControlledOpenBranchDialog({
               />
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={state.isOpening}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={state.isOpening || !state.branchName.trim()}
+          >
             {state.isOpening ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -359,6 +367,7 @@ function TicketStarter({ pr, projectId, onCreated }: TicketStarterProps) {
   return (
     <button
       onClick={handleClick}
+      data-testid={`pr-suggestion-${pr.number}`}
       disabled={isCreating}
       className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md border border-dashed border-border bg-muted/40 hover:bg-muted/70 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
@@ -589,7 +598,10 @@ export function ProjectBoard({
   return (
     <div className="flex flex-col">
       {/* Per-Board Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div
+        className="flex items-center justify-between mb-3"
+        data-testid={`project-board-${project.id}`}
+      >
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="font-semibold shrink-0">{project.name}</h2>
           {commitInfo && (
@@ -604,7 +616,7 @@ export function ProjectBoard({
         <div className="flex items-center gap-2 shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" aria-label={`Open ${project.name} board menu`}>
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -648,6 +660,7 @@ export function ProjectBoard({
               <KanbanColumn
                 key={columnId}
                 value={columnId}
+                data-testid={`column-${project.id}-${columnId.toLowerCase().replace(/\s+/g, "-")}`}
                 className="flex-1 min-w-[220px] flex flex-col"
               >
                 <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border px-1">

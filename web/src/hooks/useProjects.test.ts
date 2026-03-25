@@ -112,6 +112,6 @@ describe("useProjects", () => {
     await waitFor(() => {
       expect(result.current.selectedProjectIds).toEqual(["p1"]);
     });
-    expect(settingsSet).not.toHaveBeenCalled();
+    expect(settingsSet).toHaveBeenCalledWith("selected_projects", '["p1"]');
   });
 });

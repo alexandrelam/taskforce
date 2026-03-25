@@ -85,16 +85,19 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
       <Label>Add New Project</Label>
       <div className="space-y-2">
         <Input
+          aria-label="Project name"
           placeholder="Project name"
           value={state.name}
           onChange={(e) => dispatch({ type: "setName", value: e.target.value })}
         />
         <Input
+          aria-label="Project path"
           placeholder="/path/to/your/project"
           value={state.path}
           onChange={(e) => dispatch({ type: "setPath", value: e.target.value })}
         />
         <Input
+          aria-label="Post-worktree command"
           placeholder="Post-worktree command (e.g., npm i)"
           value={state.command}
           onChange={(e) => dispatch({ type: "setCommand", value: e.target.value })}
