@@ -119,6 +119,10 @@ Add these hooks to your Claude Code config (`.claude/settings.json`) to auto-tra
 
 See [HOOKS.md](HOOKS.md) for detailed configuration options and troubleshooting.
 
+## Security
+
+To report a security vulnerability, use GitHub private vulnerability reporting. Do not open a public issue. See [SECURITY.md](SECURITY.md) for the reporting process.
+
 ## Tech Stack
 
 - **Backend**: Express 5, SQLite, Drizzle ORM, node-pty
