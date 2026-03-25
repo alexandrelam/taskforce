@@ -1,7 +1,6 @@
 import { defineConfig } from "@playwright/test";
 
-const chromiumExecutablePath =
-  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "/usr/bin/chromium";
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -18,9 +17,13 @@ export default defineConfig({
       name: "chromium",
       use: {
         browserName: "chromium",
-        launchOptions: {
-          executablePath: chromiumExecutablePath,
-        },
+        ...(chromiumExecutablePath
+          ? {
+              launchOptions: {
+                executablePath: chromiumExecutablePath,
+              },
+            }
+          : {}),
       },
     },
   ],
