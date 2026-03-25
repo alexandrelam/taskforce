@@ -77,13 +77,21 @@ export function TerminalPanel({
   const panes: Pane[] = selectedProject?.panes ?? [];
 
   return (
-    <div ref={panelRef} className="w-[70%] min-w-[600px] border-l border-border flex flex-col">
+    <div
+      ref={panelRef}
+      data-testid="terminal-panel"
+      className="w-[70%] min-w-[600px] border-l border-border flex flex-col"
+    >
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
           <div className="text-sm text-muted-foreground">{getPanelTitle()}</div>
           <div className="font-medium">{selectedTask.title}</div>
         </div>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
+        <button
+          onClick={onClose}
+          aria-label="Close Terminal Panel"
+          className="text-muted-foreground hover:text-foreground p-1"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"

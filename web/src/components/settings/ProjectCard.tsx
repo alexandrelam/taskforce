@@ -71,18 +71,24 @@ export function ProjectCard({
   };
 
   return (
-    <div className="rounded-md border p-3 space-y-2">
+    <div className="rounded-md border p-3 space-y-2" data-testid={`project-card-${project.id}`}>
       <div className="flex items-center justify-between">
         <div>
           <div className="font-medium">{project.name}</div>
           <div className="text-sm text-muted-foreground">{project.path}</div>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => onDelete(project.id)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Delete project ${project.name}`}
+          onClick={() => onDelete(project.id)}
+        >
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </div>
       <div className="flex items-center gap-2">
         <Input
+          aria-label={`Post-worktree command for ${project.name}`}
           placeholder="Post-worktree command (e.g., npm i)"
           value={
             editingCommandId === project.id
@@ -143,6 +149,7 @@ export function ProjectCard({
               {pane.name}
               <button
                 type="button"
+                aria-label={`Remove pane ${pane.name}`}
                 onClick={() => onRemovePane(project.id, pane.name)}
                 className="hover:text-destructive"
               >
@@ -153,6 +160,7 @@ export function ProjectCard({
         </div>
         <div className="flex items-center gap-2 mt-2">
           <Input
+            aria-label={`New pane name for ${project.name}`}
             placeholder="New pane name"
             value={newPaneName}
             onChange={(e) => {
@@ -167,7 +175,13 @@ export function ProjectCard({
             }}
             className="text-sm h-8"
           />
-          <Button type="button" variant="outline" size="sm" onClick={handleAddPane}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label={`Add pane to ${project.name}`}
+            onClick={handleAddPane}
+          >
             <Plus className="h-3 w-3" />
           </Button>
         </div>

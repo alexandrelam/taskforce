@@ -34,6 +34,7 @@ export function TerminalTabs({
         <button
           key={pane.name}
           onClick={() => onPaneChange(pane.name)}
+          data-testid={`terminal-tab-${pane.name}`}
           className={cn(
             "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-1",
             activePane === pane.name

@@ -104,6 +104,7 @@ export function TicketCard({
       value={task.id}
       asHandle
       onClick={onClick}
+      data-testid={`ticket-card-${task.id}`}
       className={`group p-3 bg-card rounded-md border-2 transition-all duration-300 relative overflow-hidden ${
         isSelected
           ? "border-primary"
@@ -131,6 +132,7 @@ export function TicketCard({
           {task.prLink && (
             <button
               onClick={handlePRClick}
+              aria-label={`Open PR for ${task.title}`}
               className={`p-1 transition-opacity ${prReview ? `${prReview.color}` : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary"}`}
               title={[prReview?.label, prCi?.label].filter(Boolean).join(" · ") || "Open PR"}
             >
@@ -140,6 +142,7 @@ export function TicketCard({
           {!task.isMain && (
             <button
               onClick={onEditTicket}
+              aria-label={`Edit ${task.title}`}
               className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary p-1 transition-opacity"
               title="Edit ticket"
             >
@@ -149,6 +152,7 @@ export function TicketCard({
           {hasEditor && !isSetupInProgress && !isSetupFailed && (
             <button
               onClick={onOpenEditor}
+              aria-label={`Open ${task.title} in editor`}
               className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary p-1 transition-opacity"
               title="Open in editor"
             >
@@ -158,6 +162,7 @@ export function TicketCard({
           {hasOverride && (
             <button
               onClick={onClearOverride}
+              aria-label={`Clear manual status override for ${task.title}`}
               className="text-amber-500 hover:text-amber-600 p-1 transition-colors"
               title="Manual status - click to re-enable automatic tracking"
             >
@@ -168,6 +173,7 @@ export function TicketCard({
             <button
               onClick={onDelete}
               disabled={isDeleting}
+              aria-label={`Delete ${task.title}`}
               className={`p-1 transition-opacity ${
                 isDeleting
                   ? "opacity-100 text-muted-foreground cursor-not-allowed"

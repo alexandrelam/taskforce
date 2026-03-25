@@ -7,6 +7,7 @@ import settingsRouter from "./routes/settings.js";
 import projectsRouter from "./routes/projects.js";
 import ticketsRouter from "./routes/tickets.js";
 import trackingRouter from "./routes/tracking.js";
+import e2eRouter from "./routes/e2e.js";
 import { startPrPoller } from "./pr-poller.js";
 import { logger } from "./services/logger.js";
 
@@ -29,6 +30,9 @@ app.use("/api/settings", settingsRouter);
 app.use("/api/projects", projectsRouter);
 app.use("/api/tickets/track", trackingRouter); // Mount before /api/tickets
 app.use("/api/tickets", ticketsRouter);
+if (process.env.ENABLE_E2E_API === "1") {
+  app.use("/api/e2e", e2eRouter);
+}
 
 // Serve static files from web/dist (frontend build)
 app.use(express.static(path.join(__dirname, "../web/dist")));
@@ -43,5 +47,7 @@ setupPtyWebSocket(server);
 
 server.listen(port, () => {
   logger.info(`Server running on http://localhost:${port}`);
-  startPrPoller();
+  if (process.env.DISABLE_PR_POLLER !== "1") {
+    startPrPoller();
+  }
 });

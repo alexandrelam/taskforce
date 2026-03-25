@@ -1,6 +1,5 @@
 import { defineConfig } from "@playwright/test";
 
-const reuseExistingServer = !process.env.CI;
 const chromiumExecutablePath =
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "/usr/bin/chromium";
 
@@ -27,15 +26,16 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "npm run dev",
+      command:
+        "DATABASE_PATH=data/e2e.sqlite.db DISABLE_PR_POLLER=1 ENABLE_E2E_API=1 npx tsx src/index.ts",
       url: "http://127.0.0.1:3325/health",
-      reuseExistingServer,
+      reuseExistingServer: false,
       timeout: 120_000,
     },
     {
       command: "npm --prefix web run dev -- --host 127.0.0.1",
       url: "http://127.0.0.1:3326",
-      reuseExistingServer,
+      reuseExistingServer: false,
       timeout: 120_000,
     },
   ],
