@@ -12,7 +12,7 @@ import { logger } from "./services/logger.js";
 
 const app = express();
 app.use(cors());
-const port = process.env.PORT || 3325;
+const port = Number(process.env.PORT) || 3325;
 
 app.use(express.json());
 
@@ -41,7 +41,7 @@ app.get("/{*splat}", (req: Request, res: Response) => {
 const server = createServer(app);
 setupPtyWebSocket(server);
 
-server.listen(port, () => {
+server.listen(port, "127.0.0.1", () => {
   logger.info(`Server running on http://localhost:${port}`);
   startPrPoller();
 });
