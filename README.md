@@ -54,6 +54,8 @@ cd web && npm run dev
 
 Open http://localhost:3326 and create your first project in Settings.
 
+`npm run db:push` creates the local `data/` directory automatically on first run, so no manual `mkdir -p data` step is needed.
+
 ## Claude Code Integration
 
 Add these hooks to your Claude Code config (`.claude/settings.json`) to auto-track ticket progress:
