@@ -3,18 +3,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type LoadWorktreeOptions = {
   tmuxAvailable?: boolean;
   execSyncImpl?: (command: string, options?: unknown) => unknown;
+  execFileSyncImpl?: (file: string, args: string[], options?: unknown) => unknown;
   existsSyncImpl?: (path: string) => boolean;
   readFileSyncImpl?: (path: string, encoding: string) => string;
 };
 
 async function loadWorktree(options: LoadWorktreeOptions = {}) {
   const execSync = vi.fn(options.execSyncImpl ?? (() => ""));
+  const execFileSync = vi.fn(options.execFileSyncImpl ?? (() => ""));
   const existsSync = vi.fn(options.existsSyncImpl ?? (() => false));
   const readFileSync = vi.fn(options.readFileSyncImpl ?? (() => ""));
   const unlinkSync = vi.fn();
   const sanitizeSessionId = vi.fn((value: string) => value.replace(/[.:]/g, "-"));
 
-  vi.doMock("child_process", () => ({ execSync }));
+  vi.doMock("child_process", () => ({ execSync, execFileSync }));
   vi.doMock("fs", () => ({ existsSync, readFileSync, unlinkSync }));
   vi.doMock("os", () => ({ default: { tmpdir: () => "/tmp" }, tmpdir: () => "/tmp" }));
   vi.doMock("../src/pty.js", () => ({
@@ -23,7 +25,7 @@ async function loadWorktree(options: LoadWorktreeOptions = {}) {
   }));
 
   const mod = await import("../src/worktree.ts");
-  return { mod, execSync, existsSync, readFileSync, unlinkSync, sanitizeSessionId };
+  return { mod, execSync, execFileSync, existsSync, readFileSync, unlinkSync, sanitizeSessionId };
 }
 
 describe("worktree helpers", () => {
@@ -40,8 +42,8 @@ describe("worktree helpers", () => {
 
   it("createWorktree rejects non-git directories", async () => {
     const { mod } = await loadWorktree({
-      execSyncImpl: (command) => {
-        if (command === "git rev-parse --git-dir") {
+      execFileSyncImpl: (file, args) => {
+        if (file === "git" && args[0] === "rev-parse" && args.includes("--git-dir")) {
           throw new Error("not a repo");
         }
         return "";
@@ -55,9 +57,9 @@ describe("worktree helpers", () => {
   });
 
   it("createWorktree uses the provided base branch", async () => {
-    const { mod, execSync } = await loadWorktree({
-      execSyncImpl: (command) => {
-        if (command === "git rev-parse --git-dir") {
+    const { mod, execFileSync } = await loadWorktree({
+      execFileSyncImpl: (file, args) => {
+        if (file === "git" && args.includes("--git-dir")) {
           return ".git";
         }
         return "";
@@ -68,19 +70,20 @@ describe("worktree helpers", () => {
       worktreePath: "/repo/app-ticket-slug",
       error: null,
     });
-    expect(execSync).toHaveBeenCalledWith(
-      'git worktree add "/repo/app-ticket-slug" -b "ticket-slug" main',
+    expect(execFileSync).toHaveBeenCalledWith(
+      "git",
+      ["worktree", "add", "/repo/app-ticket-slug", "-b", "ticket-slug", "main"],
       expect.objectContaining({ cwd: "/repo/app" })
     );
   });
 
   it("createWorktree falls back to the current branch and errors when unavailable", async () => {
     const { mod } = await loadWorktree({
-      execSyncImpl: (command) => {
-        if (command === "git rev-parse --git-dir") {
+      execFileSyncImpl: (file, args) => {
+        if (file === "git" && args.includes("--git-dir")) {
           return ".git";
         }
-        if (command === "git rev-parse --abbrev-ref HEAD") {
+        if (file === "git" && args.includes("--abbrev-ref")) {
           throw new Error("no branch");
         }
         return "";
@@ -95,11 +98,11 @@ describe("worktree helpers", () => {
 
   it("createWorktreeFromBranch reports missing branches", async () => {
     const { mod } = await loadWorktree({
-      execSyncImpl: (command) => {
-        if (command === "git rev-parse --git-dir") {
+      execFileSyncImpl: (file, args) => {
+        if (file === "git" && args.includes("--git-dir")) {
           return ".git";
         }
-        if (command.startsWith('git rev-parse --verify "origin/feature-x"')) {
+        if (file === "git" && args.includes("--verify") && args.includes("origin/feature-x")) {
           throw new Error("missing");
         }
         return "";
@@ -129,8 +132,8 @@ describe("worktree helpers", () => {
 
   it("getTmuxSessionStatus returns running while the tmux session exists", async () => {
     const { mod } = await loadWorktree({
-      execSyncImpl: (command) => {
-        if (command.startsWith('tmux has-session -t "ticket-1-setup"')) {
+      execFileSyncImpl: (file, args) => {
+        if (file === "tmux" && args.includes("has-session") && args.includes("ticket-1-setup")) {
           return "";
         }
         return "";
@@ -142,8 +145,8 @@ describe("worktree helpers", () => {
 
   it("getTmuxSessionStatus reads the exit code file once the session ends", async () => {
     const { mod } = await loadWorktree({
-      execSyncImpl: (command) => {
-        if (command.startsWith('tmux has-session -t "ticket-1-setup"')) {
+      execFileSyncImpl: (file, args) => {
+        if (file === "tmux" && args.includes("has-session") && args.includes("ticket-1-setup")) {
           throw new Error("missing");
         }
         return "";

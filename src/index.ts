@@ -11,7 +11,23 @@ import { startPrPoller } from "./pr-poller.js";
 import { logger } from "./services/logger.js";
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (same-origin, curl, non-browser clients)
+      if (!origin) return callback(null, true);
+      try {
+        const url = new URL(origin);
+        if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+          return callback(null, true);
+        }
+      } catch {
+        // invalid origin URL
+      }
+      callback(new Error("CORS not allowed"));
+    },
+  })
+);
 const port = Number(process.env.PORT) || 3325;
 
 app.use(express.json());
