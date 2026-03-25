@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import path from "path";
 import { existsSync, unlinkSync, readFileSync } from "fs";
 import os from "os";
@@ -20,7 +20,7 @@ export function slugify(title: string): string {
 
 function getCurrentBranch(cwd: string): string | null {
   try {
-    const branch = execSync("git rev-parse --abbrev-ref HEAD", {
+    const branch = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
       cwd,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
@@ -33,7 +33,7 @@ function getCurrentBranch(cwd: string): string | null {
 
 function isGitRepo(cwd: string): boolean {
   try {
-    execSync("git rev-parse --git-dir", {
+    execFileSync("git", ["rev-parse", "--git-dir"], {
       cwd,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
@@ -85,7 +85,7 @@ export function createWorktree(
 
   try {
     // Create worktree from base branch
-    execSync(`git worktree add "${worktreePath}" -b "${ticketSlug}" ${branch}`, {
+    execFileSync("git", ["worktree", "add", worktreePath, "-b", ticketSlug, branch], {
       cwd: projectPath,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
@@ -148,7 +148,7 @@ export function createWorktreeFromBranch(projectPath: string, branchName: string
 
   try {
     // Check if branch exists (local or remote)
-    execSync(`git rev-parse --verify "${branchName}"`, {
+    execFileSync("git", ["rev-parse", "--verify", branchName], {
       cwd: projectPath,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
@@ -159,7 +159,7 @@ export function createWorktreeFromBranch(projectPath: string, branchName: string
 
   try {
     // Create worktree from existing branch (no -b flag)
-    execSync(`git worktree add "${worktreePath}" "${branchName}"`, {
+    execFileSync("git", ["worktree", "add", worktreePath, branchName], {
       cwd: projectPath,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
@@ -181,7 +181,7 @@ export function removeWorktree(
   worktreePath: string
 ): { success: boolean; error: string | null } {
   try {
-    execSync(`git worktree remove "${worktreePath}" --force`, {
+    execFileSync("git", ["worktree", "remove", worktreePath, "--force"], {
       cwd: projectPath,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
@@ -277,7 +277,7 @@ export function getTmuxSessionStatus(sessionName: string): SessionStatus {
 
   // Check if session exists
   try {
-    execSync(`tmux has-session -t "${sanitizedName}"`, {
+    execFileSync("tmux", ["has-session", "-t", sanitizedName], {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -312,7 +312,7 @@ export function captureTmuxOutput(sessionName: string): string {
 
   try {
     // Capture the entire scrollback buffer
-    const output = execSync(`tmux capture-pane -t "${sanitizedName}" -p -S -`, {
+    const output = execFileSync("tmux", ["capture-pane", "-t", sanitizedName, "-p", "-S", "-"], {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer
@@ -334,7 +334,7 @@ export function killSetupTmuxSession(sessionName: string): void {
 
   // Kill the session
   try {
-    execSync(`tmux kill-session -t "${sanitizedName}"`, { stdio: "ignore" });
+    execFileSync("tmux", ["kill-session", "-t", sanitizedName], { stdio: "ignore" });
   } catch {
     // Session may already be dead
   }

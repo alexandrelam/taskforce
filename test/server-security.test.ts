@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createServer, type Server } from "http";
 import express from "express";
+import cors from "cors";
 import WebSocket from "ws";
 
 vi.mock("node-pty", () => ({
@@ -30,6 +31,89 @@ describe("server security", () => {
       }
 
       await new Promise<void>((resolve) => server.close(() => resolve()));
+    });
+  });
+
+  describe("CORS origin validation", () => {
+    let server: Server;
+    let port: number;
+
+    function createCorsApp() {
+      const app = express();
+      app.use(
+        cors({
+          origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+            try {
+              const url = new URL(origin);
+              if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+                return callback(null, true);
+              }
+            } catch {
+              // invalid origin URL
+            }
+            callback(new Error("CORS not allowed"));
+          },
+        })
+      );
+      app.get("/api/test", (_req, res) => res.json({ ok: true }));
+      return app;
+    }
+
+    beforeAll(async () => {
+      const app = createCorsApp();
+      server = createServer(app);
+      await new Promise<void>((resolve) => {
+        server.listen(0, "127.0.0.1", () => resolve());
+      });
+      const addr = server.address();
+      if (typeof addr === "object" && addr !== null) {
+        port = addr.port;
+      }
+    });
+
+    afterAll(async () => {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    });
+
+    it("allows requests with no origin header", async () => {
+      const res = await fetch(`http://127.0.0.1:${port}/api/test`);
+      expect(res.ok).toBe(true);
+    });
+
+    it("allows requests from http://localhost:5173", async () => {
+      const res = await fetch(`http://127.0.0.1:${port}/api/test`, {
+        headers: { origin: "http://localhost:5173" },
+      });
+      expect(res.headers.get("access-control-allow-origin")).toBe("http://localhost:5173");
+      expect(res.ok).toBe(true);
+    });
+
+    it("allows requests from http://127.0.0.1:3325", async () => {
+      const res = await fetch(`http://127.0.0.1:${port}/api/test`, {
+        headers: { origin: "http://127.0.0.1:3325" },
+      });
+      expect(res.headers.get("access-control-allow-origin")).toBe("http://127.0.0.1:3325");
+      expect(res.ok).toBe(true);
+    });
+
+    it("rejects requests from non-localhost origins", async () => {
+      const res = await fetch(`http://127.0.0.1:${port}/api/test`, {
+        headers: { origin: "http://evil.com" },
+      });
+      expect(res.ok).toBe(false);
+      expect(res.status).toBe(500);
+    });
+
+    it("rejects CORS preflight from non-localhost origins", async () => {
+      const res = await fetch(`http://127.0.0.1:${port}/api/test`, {
+        method: "OPTIONS",
+        headers: {
+          origin: "http://evil.com",
+          "access-control-request-method": "GET",
+        },
+      });
+      expect(res.ok).toBe(false);
     });
   });
 
