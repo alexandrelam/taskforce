@@ -106,13 +106,15 @@ export function TicketCard({
       onClick={onClick}
       data-testid={`ticket-card-${task.id}`}
       className={`group p-3 bg-card rounded-md border-2 transition-all duration-300 relative overflow-hidden ${
-        isSelected
-          ? "border-primary"
-          : isSetupFailed
-            ? "border-destructive/50 hover:border-destructive"
-            : hasOverride
-              ? "border-amber-500/50 hover:border-amber-500"
-              : "border-border hover:border-primary/50"
+        isSetupInProgress
+          ? "ticket-working"
+          : isSelected
+            ? "border-primary"
+            : isSetupFailed
+              ? "border-destructive/50 hover:border-destructive"
+              : hasOverride
+                ? "border-amber-500/50 hover:border-amber-500"
+                : "border-border hover:border-primary/50"
       }`}
     >
       {isSelected && <Ripple mainCircleSize={100} numCircles={5} />}

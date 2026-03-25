@@ -92,14 +92,11 @@ function tick() {
   for (const row of rows) {
     if (!row.prLink) continue;
 
-    // Skip MERGED/CLOSED PRs checked within last hour
+    // Skip MERGED PRs checked within last hour (CLOSED can be reopened)
     if (row.prState) {
       try {
         const prev: PrState = JSON.parse(row.prState);
-        if (
-          (prev.state === "MERGED" || prev.state === "CLOSED") &&
-          Date.now() - prev.lastCheckedAt < 3600000
-        ) {
+        if (prev.state === "MERGED" && Date.now() - prev.lastCheckedAt < 3600000) {
           continue;
         }
       } catch {

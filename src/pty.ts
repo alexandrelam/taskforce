@@ -68,7 +68,20 @@ export function killTmuxSession(ticketId: string): void {
 }
 
 export function setupPtyWebSocket(server: Server): void {
-  const wss = new WebSocketServer({ server, path: "/pty" });
+  const wss = new WebSocketServer({
+    server,
+    path: "/pty",
+    verifyClient: (info: { origin: string; secure: boolean; req: IncomingMessage }) => {
+      const origin = info.origin || info.req.headers.origin;
+      if (!origin) return true;
+      try {
+        const url = new URL(origin);
+        return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+      } catch {
+        return false;
+      }
+    },
+  });
 
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     const url = new URL(req.url || "", `http://${req.headers.host}`);
@@ -94,6 +107,12 @@ export function setupPtyWebSocket(server: Server): void {
           tmuxSessionName,
           "-c",
           cwd, // Set working directory for new sessions
+          ";",
+          "set-option",
+          "-t",
+          tmuxSessionName,
+          "mouse",
+          "on", // Enable mouse scrolling through tmux scrollback
         ],
         {
           name: "xterm-256color",

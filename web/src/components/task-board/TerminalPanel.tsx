@@ -80,7 +80,7 @@ export function TerminalPanel({
     <div
       ref={panelRef}
       data-testid="terminal-panel"
-      className="w-[70%] min-w-[600px] border-l border-border flex flex-col"
+      className="fixed right-0 top-0 h-screen w-[700px] border-l border-border flex flex-col bg-background z-50"
     >
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
