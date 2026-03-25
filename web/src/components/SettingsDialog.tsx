@@ -238,7 +238,7 @@ export function SettingsDialog({ onProjectsChange }: SettingsDialogProps) {
   return (
     <Dialog open={state.open} onOpenChange={(nextOpen) => void handleOpenChange(nextOpen)}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" aria-label="Open Settings">
           <Settings className="h-5 w-5" />
         </Button>
       </DialogTrigger>

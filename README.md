@@ -35,8 +35,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/alexandrelam/10x-claude.git
-cd 10x-claude
+git clone https://github.com/alexandrelam/taskforce.git
+cd taskforce
 
 # Install dependencies
 npm install

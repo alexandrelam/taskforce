@@ -9,7 +9,7 @@ import {
   GitPullRequest,
   Pencil,
 } from "lucide-react";
-import { formatElapsedTime } from "@/hooks/useTimer";
+import { formatElapsedTime, useTimer } from "@/hooks/useTimer";
 import type { Task, PrState } from "@/types";
 import { Ripple } from "@/components/ui/ripple";
 
@@ -69,6 +69,7 @@ export function TicketCard({
   onOpenEditor,
   onEditTicket,
 }: TicketCardProps) {
+  const now = useTimer();
   const isSetupInProgress =
     task.setupStatus === "pending" ||
     task.setupStatus === "creating_worktree" ||
@@ -103,6 +104,7 @@ export function TicketCard({
       value={task.id}
       asHandle
       onClick={onClick}
+      data-testid={`ticket-card-${task.id}`}
       className={`group p-3 bg-card rounded-md border-2 transition-all duration-300 relative overflow-hidden ${
         isSetupInProgress
           ? "ticket-working"
@@ -116,7 +118,7 @@ export function TicketCard({
       }`}
     >
       {isSelected && <Ripple mainCircleSize={100} numCircles={5} />}
-      <div className="flex items-center">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           {isSetupInProgress && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
           {isSetupFailed && <AlertCircle className="h-3 w-3 text-destructive" />}
@@ -127,6 +129,80 @@ export function TicketCard({
             </span>
           )}
           {!task.isMain && task.title}
+        </div>
+        <div className="flex items-center gap-1">
+          {task.prLink && (
+            <button
+              onClick={handlePRClick}
+              aria-label={`Open PR for ${task.title}`}
+              className={`p-1 transition-opacity ${prReview ? `${prReview.color}` : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary"}`}
+              title={[prReview?.label, prCi?.label].filter(Boolean).join(" · ") || "Open PR"}
+            >
+              <GitPullRequest className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {!task.isMain && (
+            <button
+              onClick={onEditTicket}
+              aria-label={`Edit ${task.title}`}
+              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary p-1 transition-opacity"
+              title="Edit ticket"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {hasEditor && !isSetupInProgress && !isSetupFailed && (
+            <button
+              onClick={onOpenEditor}
+              aria-label={`Open ${task.title} in editor`}
+              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary p-1 transition-opacity"
+              title="Open in editor"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {hasOverride && (
+            <button
+              onClick={onClearOverride}
+              aria-label={`Clear manual status override for ${task.title}`}
+              className="text-amber-500 hover:text-amber-600 p-1 transition-colors"
+              title="Manual status - click to re-enable automatic tracking"
+            >
+              <Lock className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {!task.isMain && (
+            <button
+              onClick={onDelete}
+              disabled={isDeleting}
+              aria-label={`Delete ${task.title}`}
+              className={`p-1 transition-opacity ${
+                isDeleting
+                  ? "opacity-100 text-muted-foreground cursor-not-allowed"
+                  : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+              }`}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M3 6h18" />
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                </svg>
+              )}
+            </button>
+          )}
         </div>
       </div>
       {task.description && (
@@ -155,78 +231,9 @@ export function TicketCard({
       {!isSetupInProgress && !isSetupFailed && columnEnteredAt && (
         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
           <Clock className="h-3 w-3" />
-          {formatElapsedTime(Date.now() - columnEnteredAt)}
+          {formatElapsedTime(now - columnEnteredAt)}
         </div>
       )}
-      <div className="flex items-center justify-end gap-1 mt-1">
-        {task.prLink && (
-          <button
-            onClick={handlePRClick}
-            className={`p-1 transition-opacity ${prReview ? `${prReview.color}` : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary"}`}
-            title={[prReview?.label, prCi?.label].filter(Boolean).join(" · ") || "Open PR"}
-          >
-            <GitPullRequest className="h-3.5 w-3.5" />
-          </button>
-        )}
-        {hasEditor && !isSetupInProgress && !isSetupFailed && (
-          <button
-            onClick={onOpenEditor}
-            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary p-1 transition-opacity"
-            title="Open in editor"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-          </button>
-        )}
-        {hasOverride && (
-          <button
-            onClick={onClearOverride}
-            className="text-amber-500 hover:text-amber-600 p-1 transition-colors"
-            title="Manual status - click to re-enable automatic tracking"
-          >
-            <Lock className="h-3.5 w-3.5" />
-          </button>
-        )}
-        {!task.isMain && (
-          <button
-            onClick={onEditTicket}
-            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary p-1 transition-opacity"
-            title="Edit ticket"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-        )}
-        {!task.isMain && (
-          <button
-            onClick={onDelete}
-            disabled={isDeleting}
-            className={`p-1 transition-opacity ${
-              isDeleting
-                ? "opacity-100 text-muted-foreground cursor-not-allowed"
-                : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-            }`}
-          >
-            {isDeleting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 6h18" />
-                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-              </svg>
-            )}
-          </button>
-        )}
-      </div>
     </KanbanItem>
   );
 }

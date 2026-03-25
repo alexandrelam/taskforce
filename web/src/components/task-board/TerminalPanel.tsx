@@ -79,6 +79,7 @@ export function TerminalPanel({
   return (
     <div
       ref={panelRef}
+      data-testid="terminal-panel"
       className="fixed right-0 top-0 h-screen w-[700px] border-l border-border flex flex-col bg-background z-50"
     >
       <div className="flex items-center justify-between p-4 border-b border-border">
@@ -86,7 +87,11 @@ export function TerminalPanel({
           <div className="text-sm text-muted-foreground">{getPanelTitle()}</div>
           <div className="font-medium">{selectedTask.title}</div>
         </div>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
+        <button
+          onClick={onClose}
+          aria-label="Close Terminal Panel"
+          className="text-muted-foreground hover:text-foreground p-1"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"

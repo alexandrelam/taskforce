@@ -56,9 +56,13 @@ export function useProjects() {
       if (settingsData.value) {
         try {
           const projectIds = JSON.parse(settingsData.value) as string[];
-          setStoredSelectedProjectIds(
-            projectIds.filter((id) => projectList.some((project) => project.id === id))
+          const filteredProjectIds = projectIds.filter((id) =>
+            projectList.some((project) => project.id === id)
           );
+          setStoredSelectedProjectIds(filteredProjectIds);
+          if (filteredProjectIds.length !== projectIds.length) {
+            await settingsApi.set("selected_projects", JSON.stringify(filteredProjectIds));
+          }
           return;
         } catch {
           // Fall through to old format

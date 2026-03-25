@@ -4,6 +4,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { Project } from "@/types";
 
 interface GlobalHeaderProps {
@@ -49,6 +50,8 @@ export function GlobalHeader({
         <div ref={dropdownRef} className="relative">
           <button
             onClick={onProjectDropdownToggle}
+            aria-label="Select Projects"
+            data-testid="project-selector-trigger"
             className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-md hover:bg-accent"
           >
             {getButtonLabel()}
@@ -70,7 +73,14 @@ export function GlobalHeader({
                   return (
                     <button
                       key={project.id}
-                      onClick={() => !isDisabled && onToggleProject(project)}
+                      onClick={() => {
+                        if (isDisabled) {
+                          toast.info("Maximum 3 projects can be selected");
+                          return;
+                        }
+                        onToggleProject(project);
+                      }}
+                      data-testid={`project-option-${project.id}`}
                       className={cn(
                         "w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2",
                         isDisabled && "opacity-50 cursor-not-allowed hover:bg-transparent"
